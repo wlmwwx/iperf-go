@@ -1,8 +1,8 @@
 package main
 
 import (
-	KCP "github.com/xtaci/kcp-go"
 	"encoding/binary"
+	KCP "github.com/xtaci/kcp-go/v5"
 	"io"
 	"net"
 	"os"
@@ -10,33 +10,32 @@ import (
 	"time"
 )
 
-
-type kcp_proto struct{
+type kcp_proto struct {
 }
 
-func (kcp *kcp_proto) name() string{
+func (kcp *kcp_proto) name() string {
 	return KCP_NAME
 }
 
-func (kcp *kcp_proto) accept(test *iperf_test) (net.Conn, error){
+func (kcp *kcp_proto) accept(test *iperf_test) (net.Conn, error) {
 	log.Debugf("Enter KCP accept")
 	conn, err := test.proto_listener.Accept()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	buf := make([]byte, 4)
 	n, err := conn.Read(buf)
 	signal := binary.LittleEndian.Uint32(buf[:])
-	if err != nil || n != 4 || signal != ACCEPT_SIGNAL{
+	if err != nil || n != 4 || signal != ACCEPT_SIGNAL {
 		log.Errorf("KCP Receive Unexpected signal")
 	}
 	log.Debugf("KCP accept succeed. signal = %v", signal)
 	return conn, nil
 }
 
-func (kcp *kcp_proto) listen(test *iperf_test) (net.Listener, error){
-	listener, err := KCP.ListenWithOptions(":" + strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
-	listener.SetReadBuffer(int(test.setting.read_buf_size))			// all income conn share the same underline packet conn, the buffer should be large
+func (kcp *kcp_proto) listen(test *iperf_test) (net.Listener, error) {
+	listener, err := KCP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
+	listener.SetReadBuffer(int(test.setting.read_buf_size)) // all income conn share the same underline packet conn, the buffer should be large
 	listener.SetWriteBuffer(int(test.setting.write_buf_size))
 
 	if err != nil {
@@ -45,8 +44,8 @@ func (kcp *kcp_proto) listen(test *iperf_test) (net.Listener, error){
 	return listener, nil
 }
 
-func (kcp *kcp_proto) connect(test *iperf_test) (net.Conn, error){
-	conn, err := KCP.DialWithOptions(test.addr + ":" + strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
+func (kcp *kcp_proto) connect(test *iperf_test) (net.Conn, error) {
+	conn, err := KCP.DialWithOptions(test.addr+":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
 	if err != nil {
 		return nil, err
 	}
@@ -60,24 +59,24 @@ func (kcp *kcp_proto) connect(test *iperf_test) (net.Conn, error){
 	return conn, nil
 }
 
-func (kcp *kcp_proto) send(sp *iperf_stream) int{
+func (kcp *kcp_proto) send(sp *iperf_stream) int {
 	n, err := sp.conn.(*KCP.UDPSession).Write(sp.buffer)
 	if err != nil {
-		if serr, ok := err.(*net.OpError); ok{
+		if serr, ok := err.(*net.OpError); ok {
 			log.Debugf("kcp conn already close = %v", serr)
 			return -1
-		} else if err.Error() == "broken pipe"{
+		} else if err.Error() == "broken pipe" {
 			log.Debugf("kcp conn already close = %v", err.Error())
 			return -1
-		} else if err == os.ErrClosed || err == io.ErrClosedPipe{
+		} else if err == os.ErrClosed || err == io.ErrClosedPipe {
 			log.Debugf("send kcp socket close.")
 			return -1
 		}
-		log.Errorf("kcp write err = %T %v",err, err)
+		log.Errorf("kcp write err = %T %v", err, err)
 		return -2
 	}
 	if n < 0 {
-		log.Errorf("kcp write err. n = %v" ,n)
+		log.Errorf("kcp write err. n = %v", n)
 		return n
 	}
 	sp.result.bytes_sent += uint64(n)
@@ -86,22 +85,22 @@ func (kcp *kcp_proto) send(sp *iperf_stream) int{
 	return n
 }
 
-func (kcp *kcp_proto) recv(sp *iperf_stream) int{
+func (kcp *kcp_proto) recv(sp *iperf_stream) int {
 	// recv is blocking
 	n, err := sp.conn.(*KCP.UDPSession).Read(sp.buffer)
 
 	if err != nil {
-		if serr, ok := err.(*net.OpError); ok{
+		if serr, ok := err.(*net.OpError); ok {
 			log.Debugf("kcp conn already close = %v", serr)
 			return -1
-		} else if err.Error() == "broken pipe"{
+		} else if err.Error() == "broken pipe" {
 			log.Debugf("kcp conn already close = %v", err.Error())
 			return -1
-		} else if err == io.EOF || err == os.ErrClosed || err == io.ErrClosedPipe{
+		} else if err == io.EOF || err == os.ErrClosed || err == io.ErrClosedPipe {
 			log.Debugf("recv kcp socket close. EOF")
 			return -1
 		}
-		log.Errorf("kcp recv err = %T %v",err, err)
+		log.Errorf("kcp recv err = %T %v", err, err)
 		return -2
 	}
 	if n < 0 {
@@ -115,7 +114,7 @@ func (kcp *kcp_proto) recv(sp *iperf_stream) int{
 	return n
 }
 
-func (kcp *kcp_proto) init(test *iperf_test) int{
+func (kcp *kcp_proto) init(test *iperf_test) int {
 	for _, sp := range test.streams {
 		sp.conn.(*KCP.UDPSession).SetReadBuffer(int(test.setting.read_buf_size))
 		sp.conn.(*KCP.UDPSession).SetWriteBuffer(int(test.setting.write_buf_size))
@@ -178,7 +177,7 @@ func (kcp *kcp_proto) stats_callback(test *iperf_test, sp *iperf_stream, temp_re
 	rp.stream_in_segs = total_in_segs
 	rp.stream_out_segs = total_out_segs
 
-	temp_result.rtt = sp.conn.(*KCP.UDPSession).GetRTT() * 1000		// ms to micro sec
+	temp_result.rtt = uint(sp.conn.(*KCP.UDPSession).GetSRTTVar() * 1000) // ms to micro sec
 	if rp.stream_min_rtt == 0 || temp_result.rtt < rp.stream_min_rtt {
 		rp.stream_min_rtt = temp_result.rtt
 	}
@@ -186,10 +185,10 @@ func (kcp *kcp_proto) stats_callback(test *iperf_test, sp *iperf_stream, temp_re
 		rp.stream_max_rtt = temp_result.rtt
 	}
 	rp.stream_sum_rtt += temp_result.rtt
-	rp.stream_cnt_rtt ++
+	rp.stream_cnt_rtt++
 	return 0
 }
 
-func (kcp *kcp_proto) teardown(test *iperf_test) int{
+func (kcp *kcp_proto) teardown(test *iperf_test) int {
 	return 0
 }

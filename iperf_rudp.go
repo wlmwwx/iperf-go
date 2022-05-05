@@ -1,43 +1,44 @@
 package main
 
 import (
-	RUDP "../rudp-go"
 	"encoding/binary"
 	"fmt"
+	RUDP "github.com/damao33/rudp-go"
 	"github.com/op/go-logging"
 	"io"
 	"net"
 	"os"
 	"strconv"
+	"time"
 )
 
-
-type rudp_proto struct{
+type rudp_proto struct {
 }
 
-func (rudp *rudp_proto) name() string{
+func (rudp *rudp_proto) name() string {
 	return RUDP_NAME
 }
 
-func (rudp *rudp_proto) accept(test *iperf_test) (net.Conn, error){
+func (rudp *rudp_proto) accept(test *iperf_test) (net.Conn, error) {
 	log.Debugf("Enter RUDP accept")
 	conn, err := test.proto_listener.Accept()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	buf := make([]byte, 4)
 	n, err := conn.Read(buf)
 	signal := binary.LittleEndian.Uint32(buf[:])
-	if err != nil || n != 4 || signal != ACCEPT_SIGNAL{
+	if err != nil || n != 4 || signal != ACCEPT_SIGNAL {
 		log.Errorf("RUDP Receive Unexpected signal")
 	}
 	log.Debugf("RUDP accept succeed. signal = %v", signal)
 	return conn, nil
 }
 
-func (rudp *rudp_proto) listen(test *iperf_test) (net.Listener, error){
-	listener, err := RUDP.ListenWithOptions(":" + strconv.Itoa(int(test.port)), int(test.setting.data_shards), int(test.setting.parity_shards))
-	listener.SetReadBuffer(int(test.setting.read_buf_size))			// all income conn share the same underline packet conn, the buffer should be large
+func (rudp *rudp_proto) listen(test *iperf_test) (net.Listener, error) {
+	//listener, err := RUDP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), int(test.setting.data_shards), int(test.setting.parity_shards))
+	listener, err := RUDP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
+	listener.SetReadBuffer(int(test.setting.read_buf_size)) // all income conn share the same underline packet conn, the buffer should be large
 	listener.SetWriteBuffer(int(test.setting.write_buf_size))
 
 	if err != nil {
@@ -46,8 +47,8 @@ func (rudp *rudp_proto) listen(test *iperf_test) (net.Listener, error){
 	return listener, nil
 }
 
-func (rudp *rudp_proto) connect(test *iperf_test) (net.Conn, error){
-	conn, err := RUDP.ConnectRUDP(test.addr + ":" + strconv.Itoa(int(test.port)), int(test.setting.data_shards), int(test.setting.parity_shards))
+func (rudp *rudp_proto) connect(test *iperf_test) (net.Conn, error) {
+	conn, err := RUDP.DialWithOptions(test.addr+":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
 	if err != nil {
 		return nil, err
 	}
@@ -61,24 +62,24 @@ func (rudp *rudp_proto) connect(test *iperf_test) (net.Conn, error){
 	return conn, nil
 }
 
-func (rudp *rudp_proto) send(sp *iperf_stream) int{
-	n, err := sp.conn.(*RUDP.RUDPSession).Write(sp.buffer)
+func (rudp *rudp_proto) send(sp *iperf_stream) int {
+	n, err := sp.conn.(*RUDP.UDPSession).Write(sp.buffer)
 	if err != nil {
-		if serr, ok := err.(*net.OpError); ok{
+		if serr, ok := err.(*net.OpError); ok {
 			log.Debugf("rudp conn already close = %v", serr)
 			return -1
-		} else if err.Error() == "broken pipe"{
+		} else if err.Error() == "broken pipe" {
 			log.Debugf("rudp conn already close = %v", err.Error())
 			return -1
-		} else if err == os.ErrClosed || err == io.ErrClosedPipe{
+		} else if err == os.ErrClosed || err == io.ErrClosedPipe {
 			log.Debugf("send rudp socket close.")
 			return -1
 		}
-		log.Errorf("rudp write err = %T %v",err, err)
+		log.Errorf("rudp write err = %T %v", err, err)
 		return -2
 	}
 	if n < 0 {
-		log.Errorf("rudp write err. n = %v" ,n)
+		log.Errorf("rudp write err. n = %v", n)
 		return n
 	}
 	sp.result.bytes_sent += uint64(n)
@@ -87,22 +88,22 @@ func (rudp *rudp_proto) send(sp *iperf_stream) int{
 	return n
 }
 
-func (rudp *rudp_proto) recv(sp *iperf_stream) int{
+func (rudp *rudp_proto) recv(sp *iperf_stream) int {
 	// recv is blocking
-	n, err := sp.conn.(*RUDP.RUDPSession).Read(sp.buffer)
+	n, err := sp.conn.(*RUDP.UDPSession).Read(sp.buffer)
 
 	if err != nil {
-		if serr, ok := err.(*net.OpError); ok{
+		if serr, ok := err.(*net.OpError); ok {
 			log.Debugf("rudp conn already close = %v", serr)
 			return -1
-		} else if err.Error() == "broken pipe"{
+		} else if err.Error() == "broken pipe" {
 			log.Debugf("rudp conn already close = %v", err.Error())
 			return -1
-		} else if err == io.EOF || err == os.ErrClosed || err == io.ErrClosedPipe{
+		} else if err == io.EOF || err == os.ErrClosed || err == io.ErrClosedPipe {
 			log.Debugf("recv rudp socket close. EOF")
 			return -1
 		}
-		log.Errorf("rudp recv err = %T %v",err, err)
+		log.Errorf("rudp recv err = %T %v", err, err)
 		return -2
 	}
 	if n < 0 {
@@ -116,12 +117,16 @@ func (rudp *rudp_proto) recv(sp *iperf_stream) int{
 	return n
 }
 
-func (rudp *rudp_proto) init(test *iperf_test) int{
+func (rudp *rudp_proto) init(test *iperf_test) int {
 	for _, sp := range test.streams {
-		sp.conn.(*RUDP.RUDPSession).SetReadBuffer(int(test.setting.read_buf_size))
-		sp.conn.(*RUDP.RUDPSession).SetWriteBuffer(int(test.setting.write_buf_size))
-		sp.conn.(*RUDP.RUDPSession).SetWindowSize(int(test.setting.snd_wnd), int(test.setting.rcv_wnd))
-		sp.conn.(*RUDP.RUDPSession).SetStreamMode(true)
+		sp.conn.(*RUDP.UDPSession).SetReadBuffer(int(test.setting.read_buf_size))
+		sp.conn.(*RUDP.UDPSession).SetWriteBuffer(int(test.setting.write_buf_size))
+		sp.conn.(*RUDP.UDPSession).SetWindowSize(int(test.setting.snd_wnd), int(test.setting.rcv_wnd))
+		sp.conn.(*RUDP.UDPSession).SetStreamMode(true)
+		sp.conn.(*RUDP.UDPSession).SetDSCP(46)
+		sp.conn.(*RUDP.UDPSession).SetMtu(1400)
+		sp.conn.(*RUDP.UDPSession).SetACKNoDelay(false)
+		sp.conn.(*RUDP.UDPSession).SetDeadline(time.Now().Add(time.Minute))
 		var no_delay, resend, nc int
 		if test.no_delay {
 			no_delay = 1
@@ -134,7 +139,7 @@ func (rudp *rudp_proto) init(test *iperf_test) int{
 			nc = 0
 		}
 		resend = int(test.setting.fast_resend)
-		sp.conn.(*RUDP.RUDPSession).SetNoDelay(no_delay, int(test.setting.flush_interval), resend, nc)
+		sp.conn.(*RUDP.UDPSession).SetNoDelay(no_delay, int(test.setting.flush_interval), resend, nc)
 	}
 	return 0
 }
@@ -175,8 +180,8 @@ func (rudp *rudp_proto) stats_callback(test *iperf_test, sp *iperf_stream, temp_
 	rp.stream_in_segs = total_in_segs
 	rp.stream_out_segs = total_out_segs
 
-	temp_result.rto = sp.conn.(*RUDP.RUDPSession).GetRTO() * 1000
-	temp_result.rtt = sp.conn.(*RUDP.RUDPSession).GetRTT() * 1000		// ms to micro sec
+	temp_result.rto = uint(sp.conn.(*RUDP.UDPSession).GetRTO() * 1000)
+	temp_result.rtt = uint(sp.conn.(*RUDP.UDPSession).GetSRTTVar() * 1000) // ms to micro sec
 	if rp.stream_min_rtt == 0 || temp_result.rtt < rp.stream_min_rtt {
 		rp.stream_min_rtt = temp_result.rtt
 	}
@@ -184,22 +189,24 @@ func (rudp *rudp_proto) stats_callback(test *iperf_test, sp *iperf_stream, temp_
 		rp.stream_max_rtt = temp_result.rtt
 	}
 	rp.stream_sum_rtt += temp_result.rtt
-	rp.stream_cnt_rtt ++
+	rp.stream_cnt_rtt++
 	return 0
 }
 
-func (rudp *rudp_proto)teardown(test *iperf_test) int{
+func (rudp *rudp_proto) teardown(test *iperf_test) int {
 	if logging.GetLevel("rudp") == logging.INFO ||
-		logging.GetLevel("rudp") == logging.DEBUG{
+		logging.GetLevel("rudp") == logging.DEBUG {
 		header := RUDP.DefaultSnmp.Header()
 		slices := RUDP.DefaultSnmp.ToSlice()
-		for k := range header{
+		for k := range header {
 			fmt.Printf("%s: %v\t", header[k], slices[k])
 		}
 		fmt.Printf("\n")
 		if test.setting.no_cong == false {
-			RUDP.PrintTracker()
+			//RUDP.PrintTracker()
+			fmt.Println("TODO::RUDP#PrintTracker()")
 		}
+		//fmt.Println("TODO:teardown snmp")
 	}
 	return 0
 }
