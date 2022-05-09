@@ -751,8 +751,8 @@ func (test *iperf_test) iperf_print_results() {
 				display_bandwidth, display_rtt, sp.result.stream_retrans, display_retrans_rate,
 				display_lost_rate, display_early_retrans_rate, display_fast_retrans_rate,
 				recover_rate, pkts_lost_rate, segs_lost_rate, role)
-			fmt.Printf("total_segs = %v, out_segs = %v, in_segs = %v, out_pkts = %v, in_pkts = %v, recovery = %v\n",
-				total_segs, sp.result.stream_out_segs, sp.result.stream_in_segs, sp.result.stream_out_pkts, sp.result.stream_in_pkts, sp.result.stream_recovers)
+			fmt.Printf("total_segs = %v, out_segs = %v, in_segs = %v, out_pkts = %v, in_pkts = %v, recovery = %v\n, repeat = %v\n",
+				total_segs, sp.result.stream_out_segs, sp.result.stream_in_segs, sp.result.stream_out_pkts, sp.result.stream_in_pkts, sp.result.stream_recovers, sp.result.stream_repeat_segs)
 		}
 	}
 	if test.stream_num > 1 {

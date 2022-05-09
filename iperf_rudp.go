@@ -155,6 +155,7 @@ func (rudp *rudp_proto) stats_callback(test *iperf_test, sp *iperf_stream, temp_
 	total_in_segs := uint(RUDP.DefaultSnmp.InSegs)
 	total_out_pkts := uint(RUDP.DefaultSnmp.OutPkts)
 	total_out_segs := uint(RUDP.DefaultSnmp.OutSegs)
+	repeatSegs := uint(RUDP.DefaultSnmp.RepeatSegs)
 	// retrans
 	temp_result.interval_retrans = total_retrans - rp.stream_prev_total_retrans
 	rp.stream_retrans += temp_result.interval_retrans
@@ -179,6 +180,7 @@ func (rudp *rudp_proto) stats_callback(test *iperf_test, sp *iperf_stream, temp_
 	// segs receive
 	rp.stream_in_segs = total_in_segs
 	rp.stream_out_segs = total_out_segs
+	rp.stream_repeat_segs = repeatSegs
 
 	temp_result.rto = uint(sp.conn.(*RUDP.UDPSession).GetRTO() * 1000)
 	temp_result.rtt = uint(sp.conn.(*RUDP.UDPSession).GetSRTTVar() * 1000) // ms to micro sec
