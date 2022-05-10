@@ -244,6 +244,7 @@ func (test *iperf_test) get_results() int {
 		log.Errorf("Read failed. %v", err)
 		return -1
 	}
+	bytes.ReplaceAll(buf, []byte("\x06"), []byte(""))
 	index := bytes.IndexByte(buf, 0)
 	err = json.Unmarshal(buf[:index], &results)
 
