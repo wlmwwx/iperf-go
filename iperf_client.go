@@ -101,8 +101,8 @@ func (test *iperf_test) client_end() {
 func (test *iperf_test) handleClientCtrlMsg() {
 	buf := make([]byte, 4)
 	for {
-		//if n, err := test.ctrl_conn.Read(buf); err==nil{
-		if n, err := io.ReadFull(test.ctrl_conn, buf); err == nil {
+		if n, err := test.ctrl_conn.Read(buf); err == nil {
+			//if n, err := io.ReadFull(test.ctrl_conn, buf); err == nil {
 			state := binary.LittleEndian.Uint32(buf[:])
 			log.Debugf("Client Ctrl conn receive n = %v state = [%v]", n, state)
 			//state, err := strconv.Atoi(string(buf[:n]))
