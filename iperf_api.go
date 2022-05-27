@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"flag"
@@ -244,9 +243,9 @@ func (test *iperf_test) get_results() int {
 		log.Errorf("Read failed. %v", err)
 		return -1
 	}
-	bytes.ReplaceAll(buf, []byte("\x06"), []byte(""))
-	index := bytes.IndexByte(buf, 0)
-	err = json.Unmarshal(buf[:index], &results)
+	/*bytes.ReplaceAll(buf, []byte("\x06"), []byte(""))
+	index := bytes.IndexByte(buf, 0)*/
+	err = json.Unmarshal(buf[:n], &results)
 
 	if err != nil {
 		log.Errorf("Decode failed. %v", err)
