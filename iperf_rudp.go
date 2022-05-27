@@ -37,7 +37,7 @@ func (rudp *rudp_proto) accept(test *iperf_test) (net.Conn, error) {
 
 func (rudp *rudp_proto) listen(test *iperf_test) (net.Listener, error) {
 	//listener, err := RUDP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), int(test.setting.data_shards), int(test.setting.parity_shards))
-	listener, err := RUDP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
+	listener, err := RUDP.ListenWithOptions("0.0.0.0:"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
 	listener.SetReadBuffer(int(test.setting.read_buf_size)) // all income conn share the same underline packet conn, the buffer should be large
 	listener.SetWriteBuffer(int(test.setting.write_buf_size))
 
