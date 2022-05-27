@@ -3,10 +3,10 @@ module iperf-go
 go 1.17
 
 require (
-	github.com/damao33/rudp-go v0.2.0
+	github.com/damao33/rudp-go v0.2.1
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/xtaci/kcp-go/v5 v5.6.1
-	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
 	gotest.tools v1.4.0
 )
 
@@ -20,5 +20,5 @@ require (
 	github.com/templexxx/xorsimd v0.4.1 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
-	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
+	golang.org/x/net v0.0.0-20220526153639-5463443f8c37 // indirect
 )
