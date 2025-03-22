@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/op/go-logging"
 	"os"
+
+	"github.com/op/go-logging"
 )
 
 /*
@@ -22,6 +23,7 @@ func init(){
 	// log init
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
 	backendFormatter := logging.NewBackendFormatter(backend, format)
+
 	logging.SetLevel(logging.ERROR, "iperf")
 	logging.SetBackend(backendFormatter)
 }

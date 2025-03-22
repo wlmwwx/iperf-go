@@ -35,11 +35,11 @@ func (test *iperfTest) createClientTimer() int {
 	now := time.Now()
 	cd := TimerClientData{p: test}
 
-	test.timer = timer_create(now, clientTimerProc, cd, test.duration*1000) // convert sec to ms
+	test.timer = timerCreate(now, clientTimerProc, cd, test.duration*1000) // convert sec to ms
 	times := test.duration * 1000 / test.interval
 
-	test.statsTicker = ticker_create(now, clientStatsTickerProc, cd, test.interval, times-1)
-	test.reportTicker = ticker_create(now, clientReportTickerProc, cd, test.interval, times-1)
+	test.statsTicker = tickerCreate(now, clientStatsTickerProc, cd, test.interval, times-1)
+	test.reportTicker = tickerCreate(now, clientReportTickerProc, cd, test.interval, times-1)
 
 	if test.timer.timer == nil || test.statsTicker.ticker == nil || test.reportTicker.ticker == nil {
 		log.Error("timer create failed.")

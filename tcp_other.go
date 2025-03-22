@@ -8,11 +8,13 @@ import (
 	"net"
 )
 
-func save_tcpInfo(sp *iperfStream, rp *iperf_interval_results) int {
+func saveTCPInfo(sp *iperfStream, rp *iperf_interval_results) int {
 	fmt.Println("TCP stats not supported on this platform")
+
 	rp.rtt = 0
 	rp.rto = 0
 	rp.interval_retrans = 0
+
 	return 0
 }
 

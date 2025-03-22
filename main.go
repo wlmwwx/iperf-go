@@ -1,7 +1,10 @@
 package main
 
 /*
-	可能存在的坑： 大端小端问题还没考虑，可能会出问题. 目前默认都是用小端（跟随系统）
+	Possible Pitfalls:
+
+	The big-endian/little-endian issue has not been considered, which may cause problems.
+	Currently, the default is to use little-endian (following the system).
 */
 
 func main() {

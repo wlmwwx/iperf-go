@@ -137,12 +137,12 @@ func (test *iperfTest) createServerTimer() int {
 
 	cd := TimerClientData{p: test}
 
-	test.timer = timer_create(now, serverTimerProc, cd, (test.duration+5)*1000) // convert sec to ms, add 5 sec to ensure client end first
+	test.timer = timerCreate(now, serverTimerProc, cd, (test.duration+5)*1000) // convert sec to ms, add 5 sec to ensure client end first
 
 	times := test.duration * 1000 / test.interval
 
-	test.statsTicker = ticker_create(now, serverStatsTickerProc, cd, test.interval, times-1)
-	test.reportTicker = ticker_create(now, serverReportTickerProc, cd, test.interval, times-1)
+	test.statsTicker = tickerCreate(now, serverStatsTickerProc, cd, test.interval, times-1)
+	test.reportTicker = tickerCreate(now, serverReportTickerProc, cd, test.interval, times-1)
 
 	if test.timer.timer == nil || test.statsTicker.ticker == nil || test.reportTicker.ticker == nil {
 		log.Error("timer create failed.")

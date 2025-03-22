@@ -687,7 +687,7 @@ func (test *iperfTest) createSenderTicker() int {
 			var cd TimerClientData
 
 			cd.p = sp
-			sp.sendTicker = ticker_create(time.Now(), sendTickerProc, cd, test.setting.pacingTime, ^uint(0))
+			sp.sendTicker = tickerCreate(time.Now(), sendTickerProc, cd, test.setting.pacingTime, ^uint(0))
 		}
 	}
 
