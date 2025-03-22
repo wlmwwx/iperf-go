@@ -86,7 +86,7 @@ func (test *iperf_test) client_end() {
 		test.reporter_callback(test)
 	}
 	test.proto.teardown(test)
-	if test.set_send_state(IPERF_DONE) < 0 {
+	if test.setSendState(IPERF_DONE) < 0 {
 		log.Errorf("set_send_state failed")
 	}
 	log.Infof("Client Enter IPerf Done...")
@@ -232,7 +232,7 @@ func (test *iperf_test) run_client() int {
 				if test.stats_callback != nil {
 					test.stats_callback(test)
 				}
-				if test.set_send_state(TEST_END) < 0 {
+				if test.setSendState(TEST_END) < 0 {
 					log.Errorf("set_send_state failed. %v", TEST_END)
 					return -1
 				}
