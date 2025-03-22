@@ -104,7 +104,7 @@ func RecvCheckState(t *testing.T, state int) int {
 }
 
 func CreateStreams(t *testing.T) int {
-	if rtn := clientTest.create_streams(); rtn < 0 {
+	if rtn := clientTest.createStreams(); rtn < 0 {
 		log.Errorf("create_streams failed. rtn = %v", rtn)
 		return -1
 	}
@@ -161,13 +161,13 @@ func handleTestStart(t *testing.T) int {
 		return -1
 	}
 
-	if rtn := clientTest.create_client_timer(); rtn < 0 {
+	if rtn := clientTest.createClientTimer(); rtn < 0 {
 		log.Errorf("create_client_timer failed. rtn = %v", rtn)
 
 		return -1
 	}
 
-	if rtn := clientTest.create_client_omit_timer(); rtn < 0 {
+	if rtn := clientTest.createClientOmitTimer(); rtn < 0 {
 		log.Errorf("create_client_omit_timer failed. rtn = %v", rtn)
 
 		return -1
@@ -506,7 +506,7 @@ func TestDisplayResult(t *testing.T) {
 
 	RecvCheckState(t, IPERF_DISPLAY_RESULT)
 
-	clientTest.client_end()
+	clientTest.clientEnd()
 
 	time.Sleep(time.Millisecond * 10) // wait for server
 	assert.Equal(t, clientTest.state, uint(IPERF_DONE))

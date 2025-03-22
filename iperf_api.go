@@ -522,7 +522,7 @@ func (test *iperf_test) runTest() int {
 		}
 	} else {
 		//client
-		rtn := test.run_client()
+		rtn := test.runClient()
 		if rtn < 0 {
 			log.Errorf("Run client failed. %v", rtn)
 
@@ -687,7 +687,7 @@ func (test *iperf_test) createSenderTicker() int {
 			var cd TimerClientData
 
 			cd.p = sp
-			sp.send_ticker = ticker_create(time.Now(), send_ticker_proc, cd, test.setting.pacing_time, ^uint(0))
+			sp.send_ticker = ticker_create(time.Now(), sendTickerProc, cd, test.setting.pacing_time, ^uint(0))
 		}
 	}
 
