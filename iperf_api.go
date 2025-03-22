@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/op/go-logging"
+	"io"
 	"net"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/op/go-logging"
 )
 
 func new_iperf_test() (test *iperf_test) {
@@ -202,7 +204,7 @@ func (test *iperf_test) send_results() int {
 			Id:        uint(i),
 			Bytes:     bytes_transfer,
 			Retrans:   rp.stream_retrans,
-			Jitter:    0, // current not used
+			Jitter:    0,
 			InPkts:    rp.stream_in_pkts,
 			OutPkts:   rp.stream_out_pkts,
 			InSegs:    rp.stream_in_segs,
@@ -218,45 +220,46 @@ func (test *iperf_test) send_results() int {
 		log.Error("Encode results failed. %v", err)
 		return -1
 	}
+	// Prefix with length
+	length := make([]byte, 4)
+	binary.LittleEndian.PutUint32(length, uint32(len(bytes)))
+	_, err = test.ctrl_conn.Write(length)
+	if err != nil {
+		log.Error("Write length failed. %v", err)
+		return -1
+	}
 	n, err := test.ctrl_conn.Write(bytes)
 	if err != nil {
 		log.Error("Write failed. %v", err)
 		return -1
 	}
-	if test.is_server {
-		log.Debugf("Server send results %v bytes: %v", n, results)
-	} else {
-		log.Debugf("Client send results %v bytes: %v", n, results)
-	}
-
+	log.Debugf("Sent %d bytes of results", n)
 	return 0
 }
 
 func (test *iperf_test) get_results() int {
 	log.Debugf("Enter get_results")
 	var results = make(stream_results_array, test.stream_num)
-	//encoder := json.NewDecoder(test.ctrl_conn)
-	//err := encoder.Decode(&params)
-	buf := make([]byte, 4*1024)
-	n, err := test.ctrl_conn.Read(buf)
+	// Read length prefix
+	lengthBuf := make([]byte, 4)
+	_, err := io.ReadFull(test.ctrl_conn, lengthBuf)
+	if err != nil {
+		log.Errorf("Read length failed. %v", err)
+		return -1
+	}
+	length := binary.LittleEndian.Uint32(lengthBuf)
+	buf := make([]byte, length)
+	_, err = io.ReadFull(test.ctrl_conn, buf)
 	if err != nil {
 		log.Errorf("Read failed. %v", err)
 		return -1
 	}
-	/*bytes.ReplaceAll(buf, []byte("\x06"), []byte(""))
-	index := bytes.IndexByte(buf, 0)*/
-	err = json.Unmarshal(buf[:n], &results)
-
+	err = json.Unmarshal(buf, &results)
 	if err != nil {
 		log.Errorf("Decode failed. %v", err)
 		return -1
 	}
-	if test.is_server {
-		log.Debugf("Server get results %v bytes: %v", n, results)
-	} else {
-		log.Debugf("Client get results %v bytes: %v", n, results)
-	}
-
+	log.Debugf("Received %d bytes of results", len(buf))
 	for i, result := range results {
 		sp := test.streams[i]
 		if test.mode == IPERF_RECEIVER {
@@ -266,7 +269,6 @@ func (test *iperf_test) get_results() int {
 			sp.result.stream_out_pkts = result.OutPkts
 		} else {
 			sp.result.bytes_received = result.Bytes
-			//sp.jitter = result.jitter
 			sp.result.stream_in_segs = result.InSegs
 			sp.result.stream_in_pkts = result.InPkts
 			sp.result.stream_recovers = result.Recovered
@@ -306,10 +308,10 @@ func (test *iperf_test) init_test() int {
 }
 
 /*
-	main level interface
+main level interface
 */
 func (test *iperf_test) init() {
-	test.protocols = append(test.protocols, new(tcp_proto), new(rudp_proto), new(kcp_proto))
+	test.protocols = append(test.protocols, new(TCPProto), new(rudp_proto), new(kcp_proto))
 }
 
 func (test *iperf_test) parse_arguments() int {
@@ -533,9 +535,9 @@ func (test *iperf_test) Print() {
 }
 
 /*
-	----------------------------------------------------
-	******************* iperf_stream *******************
-	----------------------------------------------------
+----------------------------------------------------
+******************* iperf_stream *******************
+----------------------------------------------------
 */
 func (sp *iperf_stream) iperf_recv(test *iperf_test) {
 	// travel all the stream and start receive
@@ -563,24 +565,35 @@ func (sp *iperf_stream) iperf_recv(test *iperf_test) {
 }
 
 /*
-	called by multi streams. Be careful the function called here
+called by multi streams. Be careful the function called here
 */
 func (sp *iperf_stream) iperf_send(test *iperf_test) {
-	// travel all the stream and start receive
+	// defaultRate := uint64(1000 * 1000 * 1000) // 1 Gb/s in bits (1000 Mbps)
+	sendInterval := time.Duration(1000000)    // 1 ms for exactly 1000 sends/s
+	if !test.setting.burst && test.setting.rate != 0 {
+		sendInterval = time.Duration(uint64(sp.bufferSize()) * 8 * 1000000000 / uint64(test.setting.rate)) // ns
+	}
+	log.Debugf("Send interval set to %v", sendInterval)
+	ticker := time.NewTicker(sendInterval)
+	defer ticker.Stop()
+
 	for {
-		if sp.can_send {
-			var n int
-			if n = sp.snd(sp); n < 0 {
-				if n == -1 {
-					log.Debugf("Iperf send stream closed.")
+		select {
+		case t := <-ticker.C:
+			if sp.can_send {
+				n := sp.snd(sp)
+				if n < 0 {
+					if n == -1 {
+						log.Debugf("Iperf send stream closed.")
+						return
+					}
+					log.Error("Iperf streams send failed. %v", n)
 					return
 				}
-				log.Error("Iperf streams send failed. %v", n)
-				return
+				test.bytes_sent += uint64(n)
+				test.blocks_sent += 1
+				log.Debugf("Stream sent data %v bytes at %v, total %v bytes", n, t, test.bytes_sent)
 			}
-			test.bytes_sent += uint64(n)
-			test.blocks_sent += 1
-			log.Debugf("Stream sent data %v bytes of total %v bytes", n, test.bytes_sent)
 		}
 		if test.setting.burst == false {
 			test.check_throttle(sp, time.Now())
@@ -589,11 +602,14 @@ func (sp *iperf_stream) iperf_send(test *iperf_test) {
 			(test.setting.bytes != 0 && test.bytes_sent >= test.setting.bytes) ||
 			(test.setting.blocks != 0 && test.blocks_sent >= test.setting.blocks) {
 			test.ctrl_chan <- TEST_END
-			// end sending
 			log.Debugf("Stream Quit sending")
 			return
 		}
 	}
+}
+
+func (sp *iperf_stream) bufferSize() int {
+	return len(sp.buffer)
 }
 
 func (test *iperf_test) create_sender_ticker() int {

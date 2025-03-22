@@ -3,9 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
-	"os"
 	"strconv"
 	"time"
 )
@@ -84,45 +82,32 @@ func (test *iperf_test) client_end() {
 	for _, sp := range test.streams {
 		sp.conn.Close()
 	}
-	if test.reporter_callback != nil { // call only after exchange_result finish
+	if test.reporter_callback != nil {
 		test.reporter_callback(test)
 	}
 	test.proto.teardown(test)
 	if test.set_send_state(IPERF_DONE) < 0 {
 		log.Errorf("set_send_state failed")
 	}
-
 	log.Infof("Client Enter IPerf Done...")
 	if test.ctrl_conn != nil {
 		test.ctrl_conn.Close()
+		test.ctrl_chan <- IPERF_DONE // Ensure main loop exits
 	}
 }
 
 func (test *iperf_test) handleClientCtrlMsg() {
 	buf := make([]byte, 4)
-	for {
+	for test.state != IPERF_DONE { // Exit before reading if done
 		if n, err := test.ctrl_conn.Read(buf); err == nil {
-			//if n, err := io.ReadFull(test.ctrl_conn, buf); err == nil {
 			state := binary.LittleEndian.Uint32(buf[:])
 			log.Debugf("Client Ctrl conn receive n = %v state = [%v]", n, state)
-			//state, err := strconv.Atoi(string(buf[:n]))
-
-			//if err != nil {
-			//	log.Errorf("Convert string to int failed. s = %v", string(buf[:n]))
-			//	return
-			//}
 			test.state = uint(state)
 			log.Infof("Client Enter %v state...", test.state)
 		} else {
-			if serr, ok := err.(*net.OpError); ok {
-				log.Info("Client control connection close. err = %T %v", serr, serr)
-				test.ctrl_conn.Close()
-			} else if err == os.ErrClosed || err == io.ErrClosedPipe || err == io.EOF {
-				log.Info("Client control connection close. err = %T %v", serr, serr)
-			} else {
-				log.Errorf("ctrl_conn read failed. err=%T, %v", err, err)
-				test.ctrl_conn.Close()
-			}
+			log.Errorf("ctrl_conn read failed. err=%T, %v", err, err)
+			test.ctrl_conn.Close()
+			test.ctrl_chan <- IPERF_DONE
 			return
 		}
 
@@ -130,45 +115,51 @@ func (test *iperf_test) handleClientCtrlMsg() {
 		case IPERF_EXCHANGE_PARAMS:
 			if rtn := test.exchange_params(); rtn < 0 {
 				log.Errorf("exchange_params failed. rtn = %v", rtn)
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 		case IPERF_CREATE_STREAM:
 			if rtn := test.create_streams(); rtn < 0 {
 				log.Errorf("create_streams failed. rtn = %v", rtn)
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 		case TEST_START:
-			// handle test start
 			if rtn := test.init_test(); rtn < 0 {
 				log.Errorf("init_test failed. rtn = %v", rtn)
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 			if rtn := test.create_client_timer(); rtn < 0 {
 				log.Errorf("create_client_timer failed. rtn = %v", rtn)
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 			if rtn := test.create_client_omit_timer(); rtn < 0 {
 				log.Errorf("create_client_omit_timer failed. rtn = %v", rtn)
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 			if test.mode == IPERF_SENDER {
 				if rtn := test.create_sender_ticker(); rtn < 0 {
 					log.Errorf("create_sender_ticker failed. rtn = %v", rtn)
+					test.ctrl_chan <- IPERF_DONE
 					return
 				}
 			}
 		case TEST_RUNNING:
 			test.ctrl_chan <- TEST_RUNNING
-			break
 		case IPERF_EXCHANGE_RESULT:
 			if rtn := test.exchange_results(); rtn < 0 {
 				log.Errorf("exchange_results failed. rtn = %v", rtn)
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 		case IPERF_DISPLAY_RESULT:
 			test.client_end()
 		case IPERF_DONE:
-			break
+			test.ctrl_chan <- IPERF_DONE
+			return
 		case SERVER_TERMINATE:
 			old_state := test.state
 			test.state = IPERF_DISPLAY_RESULT
@@ -176,9 +167,11 @@ func (test *iperf_test) handleClientCtrlMsg() {
 			test.state = old_state
 		default:
 			log.Errorf("Unexpected situation with state = %v.", test.state)
+			test.ctrl_chan <- IPERF_DONE
 			return
 		}
 	}
+	test.ctrl_chan <- IPERF_DONE // Ensure exit
 }
 
 func (test *iperf_test) ConnectServer() int {
