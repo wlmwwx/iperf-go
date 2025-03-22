@@ -11,13 +11,13 @@ func main() {
 	}
 	test.init()
 
-	if rtn := test.parse_arguments(); rtn < 0 {
+	if rtn := test.parseArguments(); rtn < 0 {
 		log.Errorf("parse arguments error: %v", rtn)
 	}
 
-	if rtn := test.run_test(); rtn < 0 {
+	if rtn := test.runTest(); rtn < 0 {
 		log.Errorf("run test failed: %v", rtn)
 	}
 
-	test.free_test()
+	test.freeTest()
 }

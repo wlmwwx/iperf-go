@@ -37,7 +37,7 @@ func init() {
 	client_test.interval = 1000 // 1000 ms
 	client_test.duration = 5    // 5 s for test
 	client_test.stream_num = 1  // 1 stream only
-	client_test.set_test_reverse(false)
+	client_test.setTestReverse(false)
 
 	//TCPSetting()
 	RUDPSetting()
@@ -150,7 +150,7 @@ func CreateStreams(t *testing.T) int {
 }
 
 func handleTestStart(t *testing.T) int {
-	if rtn := client_test.init_test(); rtn < 0 {
+	if rtn := client_test.initTest(); rtn < 0 {
 		log.Errorf("init_test failed. rtn = %v", rtn)
 		return -1
 	}
@@ -163,7 +163,7 @@ func handleTestStart(t *testing.T) int {
 		return -1
 	}
 	if client_test.mode == IPERF_SENDER {
-		if rtn := client_test.create_sender_ticker(); rtn < 0 {
+		if rtn := client_test.createSenderTicker(); rtn < 0 {
 			log.Errorf("create_client_send_timer failed. rtn = %v", rtn)
 			return -1
 		}
@@ -205,10 +205,10 @@ func handleTestRunning(t *testing.T) int {
 	log.Info("Client enter Test Running state...")
 	for i, sp := range client_test.streams {
 		if client_test.mode == IPERF_SENDER {
-			go sp.iperf_send(client_test)
+			go sp.iperfSend(client_test)
 			log.Infof("Stream %v start sending.", i)
 		} else {
-			go sp.iperf_recv(client_test)
+			go sp.iperfRecv(client_test)
 			log.Infof("Stream %v start receiving.", i)
 		}
 	}
@@ -285,7 +285,7 @@ func handleTestRunning(t *testing.T) int {
 }
 
 func handleExchangeResult(t *testing.T) int {
-	if rtn := client_test.exchange_results(); rtn < 0 {
+	if rtn := client_test.exchangeResults(); rtn < 0 {
 		log.Errorf("exchange_results failed. rtn = %v", rtn)
 		return -1
 	}
@@ -445,7 +445,7 @@ func TestDisplayResult(t *testing.T) {
 	}
 	RecvCheckState(t, IPERF_EXCHANGE_PARAMS)
 	//client_test.stream_num = 2
-	if rtn := client_test.exchange_params(); rtn < 0 {
+	if rtn := client_test.exchangeParams(); rtn < 0 {
 		t.FailNow()
 	}
 	RecvCheckState(t, IPERF_CREATE_STREAM)

@@ -17,9 +17,9 @@ func (test *iperf_test) create_streams() int {
 		}
 		var sp *iperf_stream
 		if test.mode == IPERF_SENDER {
-			sp = test.new_stream(conn, SENDER_STREAM)
+			sp = test.newStream(conn, SENDER_STREAM)
 		} else {
-			sp = test.new_stream(conn, RECEIVER_STREAM)
+			sp = test.newStream(conn, RECEIVER_STREAM)
 		}
 		test.streams = append(test.streams, sp)
 	}
@@ -74,7 +74,7 @@ func (test *iperf_test) create_client_omit_timer() int {
 
 func send_ticker_proc(data TimerClientData, now time.Time) {
 	sp := data.p.(*iperf_stream)
-	sp.test.check_throttle(sp, now)
+	sp.test.checkThrottle(sp, now)
 }
 
 func (test *iperf_test) client_end() {
@@ -113,7 +113,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 
 		switch test.state {
 		case IPERF_EXCHANGE_PARAMS:
-			if rtn := test.exchange_params(); rtn < 0 {
+			if rtn := test.exchangeParams(); rtn < 0 {
 				log.Errorf("exchange_params failed. rtn = %v", rtn)
 				test.ctrl_chan <- IPERF_DONE
 				return
@@ -125,7 +125,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 				return
 			}
 		case TEST_START:
-			if rtn := test.init_test(); rtn < 0 {
+			if rtn := test.initTest(); rtn < 0 {
 				log.Errorf("init_test failed. rtn = %v", rtn)
 				test.ctrl_chan <- IPERF_DONE
 				return
@@ -141,7 +141,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 				return
 			}
 			if test.mode == IPERF_SENDER {
-				if rtn := test.create_sender_ticker(); rtn < 0 {
+				if rtn := test.createSenderTicker(); rtn < 0 {
 					log.Errorf("create_sender_ticker failed. rtn = %v", rtn)
 					test.ctrl_chan <- IPERF_DONE
 					return
@@ -150,7 +150,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 		case TEST_RUNNING:
 			test.ctrl_chan <- TEST_RUNNING
 		case IPERF_EXCHANGE_RESULT:
-			if rtn := test.exchange_results(); rtn < 0 {
+			if rtn := test.exchangeResults(); rtn < 0 {
 				log.Errorf("exchange_results failed. rtn = %v", rtn)
 				test.ctrl_chan <- IPERF_DONE
 				return
@@ -210,10 +210,10 @@ func (test *iperf_test) run_client() int {
 				log.Info("Client enter Test Running state...")
 				for i, sp := range test.streams {
 					if sp.role == SENDER_STREAM {
-						go sp.iperf_send(test)
+						go sp.iperfSend(test)
 						log.Infof("Client Stream %v start sending.", i)
 					} else {
-						go sp.iperf_recv(test)
+						go sp.iperfRecv(test)
 						log.Infof("Client Stream %v start receiving.", i)
 					}
 				}

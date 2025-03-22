@@ -55,7 +55,7 @@ func (test *iperf_test) handleServerCtrlMsg() {
 			if test.stats_callback != nil {
 				test.stats_callback(test)
 			}
-			test.close_all_streams()
+			test.closeAllStreams()
 
 			/* exchange result mode */
 			if test.setSendState(IPERF_EXCHANGE_RESULT) < 0 {
@@ -63,7 +63,7 @@ func (test *iperf_test) handleServerCtrlMsg() {
 				return
 			}
 			log.Infof("Server Enter Exchange Result state...")
-			if test.exchange_results() < 0 {
+			if test.exchangeResults() < 0 {
 				log.Errorf("exchange result failed")
 				return
 			}
@@ -94,7 +94,7 @@ func (test *iperf_test) handleServerCtrlMsg() {
 			test.reporter_callback(test)
 			test.state = old_state
 
-			test.close_all_streams()
+			test.closeAllStreams()
 			log.Infof("Client is terminated.")
 			test.state = IPERF_DONE
 			break
@@ -183,7 +183,7 @@ func (test *iperf_test) run_server() int {
 	}
 	log.Info("Enter Exchange Params state...")
 
-	if test.exchange_params() < 0 {
+	if test.exchangeParams() < 0 {
 		log.Error("exchange params failed.")
 		return -3
 	}
@@ -224,9 +224,9 @@ func (test *iperf_test) run_server() int {
 					stream_num++
 					var sp *iperf_stream
 					if test.mode == IPERF_SENDER {
-						sp = test.new_stream(proto_conn, SENDER_STREAM)
+						sp = test.newStream(proto_conn, SENDER_STREAM)
 					} else {
-						sp = test.new_stream(proto_conn, RECEIVER_STREAM)
+						sp = test.newStream(proto_conn, RECEIVER_STREAM)
 					}
 
 					if sp == nil {
@@ -242,7 +242,7 @@ func (test *iperf_test) run_server() int {
 						return -5
 					}
 					log.Info("Enter Test Start state...")
-					if test.init_test() < 0 {
+					if test.initTest() < 0 {
 						log.Errorf("Init test failed.")
 						return -5
 					}
@@ -255,7 +255,7 @@ func (test *iperf_test) run_server() int {
 						return -7
 					}
 					if test.mode == IPERF_SENDER {
-						if rtn := test.create_sender_ticker(); rtn < 0 {
+						if rtn := test.createSenderTicker(); rtn < 0 {
 							log.Errorf("create_sender_ticker failed. rtn = %v", rtn)
 							return -7
 						}
@@ -270,10 +270,10 @@ func (test *iperf_test) run_server() int {
 				log.Info("Enter Test Running state...")
 				for i, sp := range test.streams {
 					if sp.role == SENDER_STREAM {
-						go sp.iperf_send(test)
+						go sp.iperfSend(test)
 						log.Infof("Server Stream %v start sending.", i)
 					} else {
-						go sp.iperf_recv(test)
+						go sp.iperfRecv(test)
 						log.Infof("Server Stream %v start receiving.", i)
 					}
 				}
