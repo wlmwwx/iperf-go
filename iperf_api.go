@@ -429,22 +429,22 @@ func (test *iperfTest) parseArguments() int {
 		test.setting.burst = true
 	} else {
 		test.setting.burst = false
-		bw_str := *bandwidthFlag
+		bwStr := *bandwidthFlag
 
-		if string(bw_str[len(bw_str)-1]) == "M" {
-			if n, err := strconv.Atoi(string(bw_str[:len(bw_str)-1])); err == nil {
+		if string(bwStr[len(bwStr)-1]) == "M" {
+			if n, err := strconv.Atoi(string(bwStr[:len(bwStr)-1])); err == nil {
 				test.setting.rate = uint(n * MB_TO_B * 8)
 			} else {
 				log.Errorf("Error bandwidth flag")
 			}
-		} else if string(bw_str[len(bw_str)-1]) == "K" {
-			if n, err := strconv.Atoi(string(bw_str[:len(bw_str)-1])); err == nil {
+		} else if string(bwStr[len(bwStr)-1]) == "K" {
+			if n, err := strconv.Atoi(string(bwStr[:len(bwStr)-1])); err == nil {
 				test.setting.rate = uint(n * KB_TO_B * 8)
 			} else {
 				log.Errorf("Error bandwidth flag")
 			}
 		} else {
-			if n, err := strconv.Atoi(bw_str); err == nil {
+			if n, err := strconv.Atoi(bwStr); err == nil {
 				test.setting.rate = uint(n * MB_TO_B * 8)
 			} else {
 				log.Errorf("Error bandwidth flag")
