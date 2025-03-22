@@ -514,7 +514,7 @@ func (test *iperfTest) parseArguments() int {
 func (test *iperfTest) runTest() int {
 	// server
 	if test.isServer == true {
-		rtn := test.run_server()
+		rtn := test.runServer()
 		if rtn < 0 {
 			log.Errorf("Run server failed. %v", rtn)
 

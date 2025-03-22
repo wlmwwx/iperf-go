@@ -45,7 +45,7 @@ func init() {
 	//KCPSetting()
 
 	//client_test.setting.burst = true
-	go serverTest.run_server()
+	go serverTest.runServer()
 	time.Sleep(time.Second)
 }
 
