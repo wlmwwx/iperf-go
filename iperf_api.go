@@ -568,17 +568,18 @@ func (sp *iperf_stream) iperf_recv(test *iperf_test) {
 called by multi streams. Be careful the function called here
 */
 func (sp *iperf_stream) iperf_send(test *iperf_test) {
-	defaultRate := uint(1000 * MB_TO_B * 8) // 1 Gb/s in bits
-	sendInterval := time.Duration(uint(sp.bufferSize())*8*1000000/defaultRate) * time.Nanosecond // Convert to ns then use time.Duration
+	// defaultRate := uint64(1000 * 1000 * 1000) // 1 Gb/s in bits (1000 Mbps)
+	sendInterval := time.Duration(1000000)    // 1 ms for exactly 1000 sends/s
 	if !test.setting.burst && test.setting.rate != 0 {
-		sendInterval = time.Duration(uint(sp.bufferSize())*8*1000000/test.setting.rate) * time.Nanosecond
+		sendInterval = time.Duration(uint64(sp.bufferSize()) * 8 * 1000000000 / uint64(test.setting.rate)) // ns
 	}
+	log.Debugf("Send interval set to %v", sendInterval)
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ticker.C:
+		case t := <-ticker.C:
 			if sp.can_send {
 				n := sp.snd(sp)
 				if n < 0 {
@@ -591,7 +592,7 @@ func (sp *iperf_stream) iperf_send(test *iperf_test) {
 				}
 				test.bytes_sent += uint64(n)
 				test.blocks_sent += 1
-				log.Debugf("Stream sent data %v bytes of total %v bytes", n, test.bytes_sent)
+				log.Debugf("Stream sent data %v bytes at %v, total %v bytes", n, t, test.bytes_sent)
 			}
 		}
 		if test.setting.burst == false {
