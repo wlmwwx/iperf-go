@@ -14,7 +14,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-func new_iperf_test() (test *iperf_test) {
+func newIperfTest() (test *iperf_test) {
 	test = new(iperf_test)
 	test.ctrl_chan = make(chan uint, 5)
 	test.setting = new(iperf_setting)
@@ -24,7 +24,7 @@ func new_iperf_test() (test *iperf_test) {
 	return
 }
 
-func (test *iperf_test) set_protocol(proto_name string) int {
+func (test *iperf_test) setProtocol(proto_name string) int {
 	for _, proto := range test.protocols {
 		if proto_name == proto.name() {
 			test.proto = proto
@@ -34,7 +34,7 @@ func (test *iperf_test) set_protocol(proto_name string) int {
 	return -1
 }
 
-func (test *iperf_test) set_send_state(state uint) int {
+func (test *iperf_test) setSendState(state uint) int {
 	test.state = state
 	test.ctrl_chan <- test.state
 	bs := make([]byte, 4)
@@ -153,7 +153,7 @@ func (test *iperf_test) get_params() int {
 		return -1
 	}
 	log.Debugf("get params %v bytes: %v", n, params.String())
-	test.set_protocol(params.ProtoName)
+	test.setProtocol(params.ProtoName)
 	test.set_test_reverse(params.Reverse)
 	test.duration = params.Duration
 	test.no_delay = params.NoDelay
@@ -458,7 +458,7 @@ func (test *iperf_test) parse_arguments() int {
 	}
 	test.no_delay = *no_delay_flag
 	if test.is_server == false {
-		test.set_protocol(*protocol_flag)
+		test.setProtocol(*protocol_flag)
 	}
 
 	test.Print()
