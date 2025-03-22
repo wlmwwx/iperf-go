@@ -1,7 +1,10 @@
 package main
 
 /*
-	可能存在的坑： 大端小端问题还没考虑，可能会出问题. 目前默认都是用小端（跟随系统）
+	Possible Pitfalls:
+
+	The big-endian/little-endian issue has not been considered, which may cause problems.
+	Currently, the default is to use little-endian (following the system).
 */
 
 func main() {
@@ -11,13 +14,13 @@ func main() {
 	}
 	test.init()
 
-	if rtn := test.parse_arguments(); rtn < 0 {
+	if rtn := test.parseArguments(); rtn < 0 {
 		log.Errorf("parse arguments error: %v", rtn)
 	}
 
-	if rtn := test.run_test(); rtn < 0 {
+	if rtn := test.runTest(); rtn < 0 {
 		log.Errorf("run test failed: %v", rtn)
 	}
 
-	test.free_test()
+	test.freeTest()
 }

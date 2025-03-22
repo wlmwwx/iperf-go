@@ -12,3 +12,4 @@ release/
 *.xml
 *.exe
 iperf-go
+iperf-go-macos
