@@ -146,3 +146,4 @@ Accept connection from client: 221.4.34.225:22567
 
 State Machine
 
+# <img src="assets/stateMachine.png" alt="stateMachine"/> 
