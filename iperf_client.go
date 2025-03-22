@@ -82,23 +82,23 @@ func (test *iperf_test) client_end() {
 	for _, sp := range test.streams {
 		sp.conn.Close()
 	}
-	if test.reporter_callback != nil { // call only after exchange_result finish
+	if test.reporter_callback != nil {
 		test.reporter_callback(test)
 	}
 	test.proto.teardown(test)
 	if test.set_send_state(IPERF_DONE) < 0 {
 		log.Errorf("set_send_state failed")
 	}
-
 	log.Infof("Client Enter IPerf Done...")
 	if test.ctrl_conn != nil {
 		test.ctrl_conn.Close()
+		test.ctrl_chan <- IPERF_DONE // Ensure main loop exits
 	}
 }
 
 func (test *iperf_test) handleClientCtrlMsg() {
 	buf := make([]byte, 4)
-	for {
+	for test.state != IPERF_DONE { // Exit before reading if done
 		if n, err := test.ctrl_conn.Read(buf); err == nil {
 			state := binary.LittleEndian.Uint32(buf[:])
 			log.Debugf("Client Ctrl conn receive n = %v state = [%v]", n, state)
@@ -159,7 +159,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 			test.client_end()
 		case IPERF_DONE:
 			test.ctrl_chan <- IPERF_DONE
-			return // Exit loop on IPERF_DONE
+			return
 		case SERVER_TERMINATE:
 			old_state := test.state
 			test.state = IPERF_DISPLAY_RESULT
@@ -171,6 +171,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 			return
 		}
 	}
+	test.ctrl_chan <- IPERF_DONE // Ensure exit
 }
 
 func (test *iperf_test) ConnectServer() int {

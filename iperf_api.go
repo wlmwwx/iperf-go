@@ -568,8 +568,11 @@ func (sp *iperf_stream) iperf_recv(test *iperf_test) {
 called by multi streams. Be careful the function called here
 */
 func (sp *iperf_stream) iperf_send(test *iperf_test) {
-	const targetRate = 100 * MB_TO_B * 8 // 100 Mb/s in bits
-	sendInterval := time.Duration(sp.bufferSize() * 8 * 1000 / targetRate) * time.Millisecond
+	defaultRate := uint(1000 * MB_TO_B * 8) // 1 Gb/s in bits
+	sendInterval := time.Duration(uint(sp.bufferSize())*8*1000000/defaultRate) * time.Nanosecond // Convert to ns then use time.Duration
+	if !test.setting.burst && test.setting.rate != 0 {
+		sendInterval = time.Duration(uint(sp.bufferSize())*8*1000000/test.setting.rate) * time.Nanosecond
+	}
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
 
@@ -604,7 +607,6 @@ func (sp *iperf_stream) iperf_send(test *iperf_test) {
 	}
 }
 
-// Helper to get buffer size
 func (sp *iperf_stream) bufferSize() int {
 	return len(sp.buffer)
 }
