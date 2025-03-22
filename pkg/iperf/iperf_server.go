@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"encoding/binary"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (test *iperfTest) serverListen() int {
+func (test *IperfTest) serverListen() int {
 	listenAddr := ":"
 	listenAddr += strconv.Itoa(int(test.port))
 
@@ -25,14 +25,14 @@ func (test *iperfTest) serverListen() int {
 	return 0
 }
 
-func (test *iperfTest) handleServerCtrlMsg() {
+func (test *IperfTest) handleServerCtrlMsg() {
 	buf := make([]byte, 4) // only for ctrl state
 
 	for {
 		if n, err := test.ctrlConn.Read(buf); err == nil {
 			state := binary.LittleEndian.Uint32(buf[:])
 
-			log.Debugf("Ctrl conn receive n = %v state = [%v]", n, state)
+			Log.Debugf("Ctrl conn receive n = %v state = [%v]", n, state)
 			//if err != nil {
 			//	log.Errorf("Convert string to int failed. s = %v", string(buf[:n]))
 			//	return
@@ -43,11 +43,11 @@ func (test *iperfTest) handleServerCtrlMsg() {
 			var serr *net.OpError
 
 			if errors.As(err, &serr) {
-				log.Info("Client control connection close. err = %T %v", serr, serr)
+				Log.Info("Client control connection close. err = %T %v", serr, serr)
 
 				err := test.ctrlConn.Close()
 				if err != nil {
-					log.Errorf("Ctrl conn close failed. err = %v", err)
+					Log.Errorf("Ctrl conn close failed. err = %v", err)
 
 					return
 				}
@@ -60,7 +60,7 @@ func (test *iperfTest) handleServerCtrlMsg() {
 		case TEST_START:
 			break
 		case TEST_END:
-			log.Infof("Server Enter Test End state...")
+			Log.Infof("Server Enter Test End state...")
 
 			test.done = true
 
@@ -72,27 +72,27 @@ func (test *iperfTest) handleServerCtrlMsg() {
 
 			/* exchange result mode */
 			if test.setSendState(IPERF_EXCHANGE_RESULT) < 0 {
-				log.Errorf("set_send_state error")
+				Log.Errorf("set_send_state error")
 
 				return
 			}
 
-			log.Infof("Server Enter Exchange Result state...")
+			Log.Infof("Server Enter Exchange Result state...")
 
 			if test.exchangeResults() < 0 {
-				log.Errorf("exchange result failed")
+				Log.Errorf("exchange result failed")
 
 				return
 			}
 
 			/* display result mode */
 			if test.setSendState(IPERF_DISPLAY_RESULT) < 0 {
-				log.Errorf("set_send_state error")
+				Log.Errorf("set_send_state error")
 
 				return
 			}
 
-			log.Infof("Server Enter Display Result state...")
+			Log.Infof("Server Enter Display Result state...")
 			if test.reporterCallback != nil { // why call these again
 				test.reporterCallback(test)
 			}
@@ -104,7 +104,7 @@ func (test *iperfTest) handleServerCtrlMsg() {
 			// on_test_finish undo
 		case IPERF_DONE:
 			test.state = IPERF_DONE
-			log.Debugf("Server reach IPERF_DONE")
+			Log.Debugf("Server reach IPERF_DONE")
 
 			test.ctrlChan <- IPERF_DONE
 			test.proto.teardown(test)
@@ -119,20 +119,20 @@ func (test *iperfTest) handleServerCtrlMsg() {
 
 			test.closeAllStreams()
 
-			log.Infof("Client is terminated.")
+			Log.Infof("Client is terminated.")
 
 			test.state = IPERF_DONE
 
 			break
 		default:
-			log.Errorf("Unexpected situation with state = %v.", test.state)
+			Log.Errorf("Unexpected situation with state = %v.", test.state)
 
 			return
 		}
 	}
 }
 
-func (test *iperfTest) createServerTimer() int {
+func (test *IperfTest) createServerTimer() int {
 	now := time.Now()
 
 	cd := TimerClientData{p: test}
@@ -145,16 +145,16 @@ func (test *iperfTest) createServerTimer() int {
 	test.reportTicker = tickerCreate(now, serverReportTickerProc, cd, test.interval, times-1)
 
 	if test.timer.timer == nil || test.statsTicker.ticker == nil || test.reportTicker.ticker == nil {
-		log.Error("timer create failed.")
+		Log.Error("timer create failed.")
 	}
 
 	return 0
 }
 
 func serverTimerProc(data TimerClientData, now time.Time) {
-	log.Debugf("Enter server_timer_proc")
+	Log.Debugf("Enter server_timer_proc")
 
-	test := data.p.(*iperfTest)
+	test := data.p.(*IperfTest)
 
 	if test.done {
 		return
@@ -166,7 +166,7 @@ func serverTimerProc(data TimerClientData, now time.Time) {
 	for _, sp := range test.streams {
 		err := sp.conn.Close()
 		if err != nil {
-			log.Errorf("Close stream conn failed. err = %v", err)
+			Log.Errorf("Close stream conn failed. err = %v", err)
 
 			return
 		}
@@ -178,7 +178,7 @@ func serverTimerProc(data TimerClientData, now time.Time) {
 }
 
 func serverStatsTickerProc(data TimerClientData, now time.Time) {
-	test := data.p.(*iperfTest)
+	test := data.p.(*IperfTest)
 
 	if test.done {
 		return
@@ -190,7 +190,7 @@ func serverStatsTickerProc(data TimerClientData, now time.Time) {
 }
 
 func serverReportTickerProc(data TimerClientData, now time.Time) {
-	test := data.p.(*iperfTest)
+	test := data.p.(*IperfTest)
 
 	if test.done {
 		return
@@ -201,28 +201,28 @@ func serverReportTickerProc(data TimerClientData, now time.Time) {
 	}
 }
 
-func (test *iperfTest) createServerOmitTimer() int {
+func (test *IperfTest) createServerOmitTimer() int {
 	// undo, depend on which kind of timer
 	return 0
 }
 
-func (test *iperfTest) runServer() int {
-	log.Debugf("Enter run_server")
+func (test *IperfTest) runServer() int {
+	Log.Debugf("Enter run_server")
 
 	if test.serverListen() < 0 {
-		log.Error("Listen failed")
+		Log.Error("Listen failed")
 
 		return -1
 	}
 
 	test.state = IPERF_START
 
-	log.Info("Enter Iperf start state...")
+	Log.Info("Enter Iperf start state...")
 
 	// start
 	conn, err := test.listener.Accept()
 	if err != nil {
-		log.Error("Accept failed")
+		Log.Error("Accept failed")
 
 		return -2
 	}
@@ -232,15 +232,15 @@ func (test *iperfTest) runServer() int {
 	fmt.Printf("Accept connection from client: %v\n", conn.RemoteAddr())
 	// exchange params
 	if test.setSendState(IPERF_EXCHANGE_PARAMS) < 0 {
-		log.Error("set_send_state error.")
+		Log.Error("set_send_state error.")
 
 		return -3
 	}
 
-	log.Info("Enter Exchange Params state...")
+	Log.Info("Enter Exchange Params state...")
 
 	if test.exchangeParams() < 0 {
-		log.Error("exchange params failed.")
+		Log.Error("exchange params failed.")
 
 		return -3
 	}
@@ -250,7 +250,7 @@ func (test *iperfTest) runServer() int {
 	if test.isServer == true {
 		listener, err := test.proto.listen(test)
 		if err != nil {
-			log.Error("proto listen error.")
+			Log.Error("proto listen error.")
 
 			return -4
 		}
@@ -260,19 +260,19 @@ func (test *iperfTest) runServer() int {
 
 	// create streams
 	if test.setSendState(IPERF_CREATE_STREAM) < 0 {
-		log.Error("set_send_state error.")
+		Log.Error("set_send_state error.")
 
 		return -3
 	}
 
-	log.Info("Enter Create Stream state...")
+	Log.Info("Enter Create Stream state...")
 
 	var isIperfDone = false
 
 	for isIperfDone != true {
 		select {
 		case state := <-test.ctrlChan:
-			log.Debugf("Ctrl channel receive state [%v]", state)
+			Log.Debugf("Ctrl channel receive state [%v]", state)
 
 			if state == IPERF_DONE {
 				return 0
@@ -282,7 +282,7 @@ func (test *iperfTest) runServer() int {
 				for streamNum < test.streamNum {
 					protoConn, err := test.proto.accept(test)
 					if err != nil {
-						log.Error("proto accept error.")
+						Log.Error("proto accept error.")
 
 						return -4
 					}
@@ -298,85 +298,85 @@ func (test *iperfTest) runServer() int {
 					}
 
 					if sp == nil {
-						log.Error("Create new strema failed.")
+						Log.Error("Create new strema failed.")
 
 						return -4
 					}
 
 					test.streams = append(test.streams, sp)
 
-					log.Debugf("create new stream, stream_num = %v, target stream num = %v", streamNum, test.streamNum)
+					Log.Debugf("create new stream, stream_num = %v, target stream num = %v", streamNum, test.streamNum)
 				}
 
 				if streamNum == test.streamNum {
 					if test.setSendState(TEST_START) != 0 {
-						log.Errorf("set_send_state error")
+						Log.Errorf("set_send_state error")
 
 						return -5
 					}
 
-					log.Info("Enter Test Start state...")
+					Log.Info("Enter Test Start state...")
 
 					if test.initTest() < 0 {
-						log.Errorf("Init test failed.")
+						Log.Errorf("Init test failed.")
 
 						return -5
 					}
 
 					if test.createServerTimer() < 0 {
-						log.Errorf("Create Server timer failed.")
+						Log.Errorf("Create Server timer failed.")
 
 						return -6
 					}
 
 					if test.createServerOmitTimer() < 0 {
-						log.Errorf("Create Server Omit timer failed.")
+						Log.Errorf("Create Server Omit timer failed.")
 
 						return -7
 					}
 
 					if test.mode == IPERF_SENDER {
 						if rtn := test.createSenderTicker(); rtn < 0 {
-							log.Errorf("create_sender_ticker failed. rtn = %v", rtn)
+							Log.Errorf("create_sender_ticker failed. rtn = %v", rtn)
 
 							return -7
 						}
 					}
 
 					if test.setSendState(TEST_RUNNING) != 0 {
-						log.Errorf("set_send_state error")
+						Log.Errorf("set_send_state error")
 
 						return -8
 					}
 				}
 			} else if state == TEST_RUNNING {
 				// Regular mode. Server receives.
-				log.Info("Enter Test Running state...")
+				Log.Info("Enter Test Running state...")
 
 				for i, sp := range test.streams {
 					if sp.role == SENDER_STREAM {
 						go sp.iperfSend(test)
 
-						log.Infof("Server Stream %v start sending.", i)
+						Log.Infof("Server Stream %v start sending.", i)
 					} else {
 						go sp.iperfRecv(test)
 
-						log.Infof("Server Stream %v start receiving.", i)
+						Log.Infof("Server Stream %v start receiving.", i)
 					}
 				}
 
-				log.Info("Server all streams start...")
+				Log.Info("Server all streams start...")
 			} else if state == TEST_END {
 				continue
 			} else if state == IPERF_DONE {
 				isIperfDone = true
 			} else {
-				log.Debugf("Channel Unhandle state [%v]", state)
+				Log.Debugf("Channel Unhandle state [%v]", state)
 			}
 		}
 	}
 
-	log.Debugf("Server side done.")
+	Log.Debugf("Server side done.")
 
 	return 0
 }

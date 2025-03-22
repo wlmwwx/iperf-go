@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"encoding/binary"
@@ -14,42 +14,51 @@ import (
 	"github.com/op/go-logging"
 )
 
-func newIperfTest() (test *iperfTest) {
-	test = new(iperfTest)
+func NewIperfTest() (test *IperfTest) {
+	test = new(IperfTest)
+
 	test.ctrlChan = make(chan uint, 5)
 	test.setting = new(iperfSetting)
 	test.reporterCallback = iperfReporterCallback
 	test.statsCallback = iperfStatsCallback
 	test.chStats = make(chan bool, 1)
+
 	return
 }
 
-func (test *iperfTest) setProtocol(proto_name string) int {
+func (test *IperfTest) setProtocol(protoName string) int {
 	for _, proto := range test.protocols {
-		if proto_name == proto.name() {
+		if protoName == proto.name() {
 			test.proto = proto
+
 			return 0
 		}
 	}
+
 	return -1
 }
 
-func (test *iperfTest) setSendState(state uint) int {
+func (test *IperfTest) setSendState(state uint) int {
 	test.state = state
 	test.ctrlChan <- test.state
+
 	bs := make([]byte, 4)
 	binary.LittleEndian.PutUint32(bs, uint32(state))
+
 	//msg := fmt.Sprintf("%v", test.state)
 	n, err := test.ctrlConn.Write(bs)
 	if err != nil {
-		log.Errorf("Write state error. %v %v", n, err)
+		Log.Errorf("Write state error. %v %v", n, err)
+
 		return -1
 	}
-	log.Debugf("Set & send state = %v, n = %v", state, n)
+
+	Log.Debugf("Set & send state = %v, n = %v", state, n)
+
 	return 0
 }
 
-func (test *iperfTest) newStream(conn net.Conn, sender_flag int) *iperfStream {
+func (test *IperfTest) newStream(conn net.Conn, sender_flag int) *iperfStream {
 	sp := new(iperfStream)
 	sp.role = sender_flag
 	sp.conn = conn
@@ -60,25 +69,30 @@ func (test *iperfTest) newStream(conn net.Conn, sender_flag int) *iperfStream {
 	sp.snd = test.proto.send
 	sp.rcv = test.proto.recv
 	sp.buffer = make([]byte, test.setting.blksize)
+
 	copy(sp.buffer[:], "hello world!")
+
 	// initialize stream
 	// set tos bit. undo
 	return sp
 }
 
-func (test *iperfTest) closeAllStreams() int {
+func (test *IperfTest) closeAllStreams() int {
 	var err error
+
 	for _, sp := range test.streams {
 		err = sp.conn.Close()
 		if err != nil {
-			log.Errorf("Stream close failed, err = %v", err)
+			Log.Errorf("Stream close failed, err = %v", err)
+
 			return -1
 		}
 	}
+
 	return 0
 }
 
-func (test *iperfTest) checkThrottle(sp *iperfStream, now time.Time) {
+func (test *IperfTest) checkThrottle(sp *iperfStream, now time.Time) {
 	if sp.test.done {
 		return
 	}
@@ -90,18 +104,18 @@ func (test *iperfTest) checkThrottle(sp *iperfStream, now time.Time) {
 	if bitsPerSecond < float64(sp.test.setting.rate) && sp.canSend == false {
 		sp.canSend = true
 
-		log.Debugf("sp.can_send turn TRUE. bits_per_second = %6.2f MB/s Required = %6.2f MB/s",
+		Log.Debugf("sp.can_send turn TRUE. bits_per_second = %6.2f MB/s Required = %6.2f MB/s",
 			bitsPerSecond/MB_TO_B/8, float64(sp.test.setting.rate)/MB_TO_B/8)
 	} else if bitsPerSecond > float64(sp.test.setting.rate) && sp.canSend == true {
 		sp.canSend = false
 
-		log.Debugf("sp.can_send turn FALSE. bits_per_second = %6.2f MB/s Required = %6.2f MB/s",
+		Log.Debugf("sp.can_send turn FALSE. bits_per_second = %6.2f MB/s Required = %6.2f MB/s",
 			bitsPerSecond/MB_TO_B/8, float64(sp.test.setting.rate)/MB_TO_B/8)
 	}
 }
 
-func (test *iperfTest) sendParams() int {
-	log.Debugf("Enter send_params")
+func (test *IperfTest) sendParams() int {
+	Log.Debugf("Enter send_params")
 	params := stream_params{
 		ProtoName:     test.proto.name(),
 		Reverse:       test.reverse,
@@ -126,44 +140,44 @@ func (test *iperfTest) sendParams() int {
 
 	bytes, err := json.Marshal(&params)
 	if err != nil {
-		log.Error("Encode params failed. %v", err)
+		Log.Error("Encode params failed. %v", err)
 
 		return -1
 	}
 
 	n, err := test.ctrlConn.Write(bytes)
 	if err != nil {
-		log.Error("Write failed. %v", err)
+		Log.Error("Write failed. %v", err)
 
 		return -1
 	}
 
-	log.Debugf("send params %v bytes: %v", n, params.String())
+	Log.Debugf("send params %v bytes: %v", n, params.String())
 
 	return 0
 }
 
-func (test *iperfTest) getParams() int {
-	log.Debugf("Enter get_params")
+func (test *IperfTest) getParams() int {
+	Log.Debugf("Enter get_params")
 	var params stream_params
 
 	buf := make([]byte, 1024)
 
 	n, err := test.ctrlConn.Read(buf)
 	if err != nil {
-		log.Errorf("Read failed. %v", err)
+		Log.Errorf("Read failed. %v", err)
 
 		return -1
 	}
 
 	err = json.Unmarshal(buf[:n], &params)
 	if err != nil {
-		log.Errorf("Decode failed. %v", err)
+		Log.Errorf("Decode failed. %v", err)
 
 		return -1
 	}
 
-	log.Debugf("get params %v bytes: %v", n, params.String())
+	Log.Debugf("get params %v bytes: %v", n, params.String())
 
 	test.setProtocol(params.ProtoName)
 	test.setTestReverse(params.Reverse)
@@ -189,7 +203,7 @@ func (test *iperfTest) getParams() int {
 	return 0
 }
 
-func (test *iperfTest) exchangeParams() int {
+func (test *IperfTest) exchangeParams() int {
 	if test.isServer == false {
 		if test.sendParams() < 0 {
 			return -1
@@ -203,22 +217,22 @@ func (test *iperfTest) exchangeParams() int {
 	return 0
 }
 
-func (test *iperfTest) sendResults() int {
-	log.Debugf("Send Results")
+func (test *IperfTest) sendResults() int {
+	Log.Debugf("Send Results")
 
 	var results = make(stream_results_array, test.streamNum)
 	for i, sp := range test.streams {
-		var bytes_transfer uint64
+		var bytesTransfer uint64
 		if test.mode == IPERF_RECEIVER {
-			bytes_transfer = sp.result.bytes_received
+			bytesTransfer = sp.result.bytes_received
 		} else {
-			bytes_transfer = sp.result.bytes_sent
+			bytesTransfer = sp.result.bytes_sent
 		}
 
 		rp := sp.result
-		sp_result := stream_results_exchange{
+		spResult := stream_results_exchange{
 			Id:        uint(i),
-			Bytes:     bytes_transfer,
+			Bytes:     bytesTransfer,
 			Retrans:   rp.stream_retrans,
 			Jitter:    0,
 			InPkts:    rp.stream_in_pkts,
@@ -230,12 +244,12 @@ func (test *iperfTest) sendResults() int {
 			EndTime:   sp.result.end_time,
 		}
 
-		results[i] = sp_result
+		results[i] = spResult
 	}
 
 	bytes, err := json.Marshal(&results)
 	if err != nil {
-		log.Error("Encode results failed. %v", err)
+		Log.Error("Encode results failed. %v", err)
 
 		return -1
 	}
@@ -246,25 +260,25 @@ func (test *iperfTest) sendResults() int {
 
 	_, err = test.ctrlConn.Write(length)
 	if err != nil {
-		log.Error("Write length failed. %v", err)
+		Log.Error("Write length failed. %v", err)
 
 		return -1
 	}
 
 	n, err := test.ctrlConn.Write(bytes)
 	if err != nil {
-		log.Error("Write failed. %v", err)
+		Log.Error("Write failed. %v", err)
 
 		return -1
 	}
 
-	log.Debugf("Sent %d bytes of results", n)
+	Log.Debugf("Sent %d bytes of results", n)
 
 	return 0
 }
 
-func (test *iperfTest) getResults() int {
-	log.Debugf("Enter get_results")
+func (test *IperfTest) getResults() int {
+	Log.Debugf("Enter get_results")
 
 	var results = make(stream_results_array, test.streamNum)
 
@@ -273,7 +287,7 @@ func (test *iperfTest) getResults() int {
 
 	_, err := io.ReadFull(test.ctrlConn, lengthBuf)
 	if err != nil {
-		log.Errorf("Read length failed. %v", err)
+		Log.Errorf("Read length failed. %v", err)
 
 		return -1
 	}
@@ -283,19 +297,19 @@ func (test *iperfTest) getResults() int {
 
 	_, err = io.ReadFull(test.ctrlConn, buf)
 	if err != nil {
-		log.Errorf("Read failed. %v", err)
+		Log.Errorf("Read failed. %v", err)
 
 		return -1
 	}
 
 	err = json.Unmarshal(buf, &results)
 	if err != nil {
-		log.Errorf("Decode failed. %v", err)
+		Log.Errorf("Decode failed. %v", err)
 
 		return -1
 	}
 
-	log.Debugf("Received %d bytes of results", len(buf))
+	Log.Debugf("Received %d bytes of results", len(buf))
 
 	for i, result := range results {
 		sp := test.streams[i]
@@ -315,7 +329,7 @@ func (test *iperfTest) getResults() int {
 	return 0
 }
 
-func (test *iperfTest) exchangeResults() int {
+func (test *IperfTest) exchangeResults() int {
 	if test.isServer == false {
 		if test.sendResults() < 0 {
 			return -1
@@ -336,7 +350,7 @@ func (test *iperfTest) exchangeResults() int {
 	return 0
 }
 
-func (test *iperfTest) initTest() int {
+func (test *IperfTest) initTest() int {
 	test.proto.init(test)
 
 	now := time.Now()
@@ -349,11 +363,11 @@ func (test *iperfTest) initTest() int {
 	return 0
 }
 
-func (test *iperfTest) init() {
+func (test *IperfTest) Init() {
 	test.protocols = append(test.protocols, new(TCPProto), new(rudpProto), new(kcpProto))
 }
 
-func (test *iperfTest) parseArguments() int {
+func (test *IperfTest) ParseArguments() int {
 
 	// command flag definition
 	var helpFlag = flag.Bool("h", false, "this help")
@@ -435,19 +449,19 @@ func (test *iperfTest) parseArguments() int {
 			if n, err := strconv.Atoi(string(bwStr[:len(bwStr)-1])); err == nil {
 				test.setting.rate = uint(n * MB_TO_B * 8)
 			} else {
-				log.Errorf("Error bandwidth flag")
+				Log.Errorf("Error bandwidth flag")
 			}
 		} else if string(bwStr[len(bwStr)-1]) == "K" {
 			if n, err := strconv.Atoi(string(bwStr[:len(bwStr)-1])); err == nil {
 				test.setting.rate = uint(n * KB_TO_B * 8)
 			} else {
-				log.Errorf("Error bandwidth flag")
+				Log.Errorf("Error bandwidth flag")
 			}
 		} else {
 			if n, err := strconv.Atoi(bwStr); err == nil {
 				test.setting.rate = uint(n * MB_TO_B * 8)
 			} else {
-				log.Errorf("Error bandwidth flag")
+				Log.Errorf("Error bandwidth flag")
 			}
 		}
 		test.setting.pacingTime = 5 // 5ms pacing
@@ -498,7 +512,7 @@ func (test *iperfTest) parseArguments() int {
 	test.setting.parityShards = *parityshardsFlag
 
 	if test.interval > test.duration*1000 {
-		log.Errorf("interval must smaller than duration")
+		Log.Errorf("interval must smaller than duration")
 	}
 
 	test.noDelay = *noDelayFlag
@@ -511,12 +525,12 @@ func (test *iperfTest) parseArguments() int {
 	return 0
 }
 
-func (test *iperfTest) runTest() int {
+func (test *IperfTest) RunTest() int {
 	// server
 	if test.isServer == true {
 		rtn := test.runServer()
 		if rtn < 0 {
-			log.Errorf("Run server failed. %v", rtn)
+			Log.Errorf("Run server failed. %v", rtn)
 
 			return rtn
 		}
@@ -524,7 +538,7 @@ func (test *iperfTest) runTest() int {
 		//client
 		rtn := test.runClient()
 		if rtn < 0 {
-			log.Errorf("Run client failed. %v", rtn)
+			Log.Errorf("Run client failed. %v", rtn)
 
 			return rtn
 		}
@@ -533,7 +547,7 @@ func (test *iperfTest) runTest() int {
 	return 0
 }
 
-func (test *iperfTest) setTestReverse(reverse bool) {
+func (test *IperfTest) setTestReverse(reverse bool) {
 	test.reverse = reverse
 	if reverse == true {
 		if test.isServer {
@@ -550,16 +564,16 @@ func (test *iperfTest) setTestReverse(reverse bool) {
 	}
 }
 
-func (test *iperfTest) freeTest() int {
+func (test *IperfTest) FreeTest() int {
 	return 0
 }
 
-func (test *iperfTest) Print() {
+func (test *IperfTest) Print() {
 	if test.isServer {
 		return
 	}
 	if test.proto == nil {
-		log.Errorf("Protocol not set.")
+		Log.Errorf("Protocol not set.")
 
 		return
 	}
@@ -585,18 +599,18 @@ func (test *iperfTest) Print() {
 
 // iperf_stream
 
-func (sp *iperfStream) iperfRecv(test *iperfTest) {
+func (sp *iperfStream) iperfRecv(test *IperfTest) {
 	// travel all the stream and start receive
 	for {
 		var n int
 		if n = sp.rcv(sp); n < 0 {
 			if n == -1 {
-				log.Debugf("Stream Quit receiving")
+				Log.Debugf("Stream Quit receiving")
 
 				return
 			}
 
-			log.Errorf("Iperf streams receive failed. n = %v", n)
+			Log.Errorf("Iperf streams receive failed. n = %v", n)
 
 			return
 		}
@@ -605,12 +619,12 @@ func (sp *iperfStream) iperfRecv(test *iperfTest) {
 			test.bytesReceived += uint64(n)
 			test.blocksReceived += 1
 
-			log.Debugf("Stream receive data %v bytes of total %v bytes", n, test.bytesReceived)
+			Log.Debugf("Stream receive data %v bytes of total %v bytes", n, test.bytesReceived)
 		}
 
 		if test.done {
 			test.ctrlChan <- TEST_END
-			log.Debugf("Stream quit receiving. test done.")
+			Log.Debugf("Stream quit receiving. test done.")
 
 			return
 		}
@@ -618,14 +632,14 @@ func (sp *iperfStream) iperfRecv(test *iperfTest) {
 }
 
 // iperfSend -- called by multi streams
-func (sp *iperfStream) iperfSend(test *iperfTest) {
+func (sp *iperfStream) iperfSend(test *IperfTest) {
 	// defaultRate := uint64(1000 * 1000 * 1000) // 1 Gb/s in bits (1000 Mbps)
 	sendInterval := time.Duration(1000000) // 1 ms for exactly 1000 sends/s
 	if !test.setting.burst && test.setting.rate != 0 {
 		sendInterval = time.Duration(uint64(sp.bufferSize()) * 8 * 1000000000 / uint64(test.setting.rate)) // ns
 	}
 
-	log.Debugf("Send interval set to %v", sendInterval)
+	Log.Debugf("Send interval set to %v", sendInterval)
 
 	ticker := time.NewTicker(sendInterval)
 	defer ticker.Stop()
@@ -635,13 +649,15 @@ func (sp *iperfStream) iperfSend(test *iperfTest) {
 		case t := <-ticker.C:
 			if sp.canSend {
 				n := sp.snd(sp)
+
 				if n < 0 {
 					if n == -1 {
-						log.Debugf("Iperf send stream closed.")
+						Log.Debugf("Iperf send stream closed.")
+
 						return
 					}
 
-					log.Error("Iperf streams send failed. %v", n)
+					Log.Error("Iperf streams send failed. %v", n)
 
 					return
 				}
@@ -649,7 +665,7 @@ func (sp *iperfStream) iperfSend(test *iperfTest) {
 				test.bytesSent += uint64(n)
 				test.blocksSent += 1
 
-				log.Debugf("Stream sent data %v bytes at %v, total %v bytes", n, t, test.bytesSent)
+				Log.Debugf("Stream sent data %v bytes at %v, total %v bytes", n, t, test.bytesSent)
 			}
 		}
 
@@ -660,9 +676,10 @@ func (sp *iperfStream) iperfSend(test *iperfTest) {
 		if (test.duration != 0 && test.done) ||
 			(test.setting.bytes != 0 && test.bytesSent >= test.setting.bytes) ||
 			(test.setting.blocks != 0 && test.blocksSent >= test.setting.blocks) {
+
 			test.ctrlChan <- TEST_END
 
-			log.Debugf("Stream Quit sending")
+			Log.Debugf("Stream Quit sending")
 
 			return
 		}
@@ -673,13 +690,13 @@ func (sp *iperfStream) bufferSize() int {
 	return len(sp.buffer)
 }
 
-func (test *iperfTest) createSenderTicker() int {
+func (test *IperfTest) createSenderTicker() int {
 	for _, sp := range test.streams {
 		sp.canSend = true
 
 		if test.setting.rate != 0 {
 			if test.setting.pacingTime == 0 || test.setting.burst == true {
-				log.Error("pacing_time & rate & burst should be set at the same time.")
+				Log.Error("pacing_time & rate & burst should be set at the same time.")
 
 				return -1
 			}
@@ -694,24 +711,24 @@ func (test *iperfTest) createSenderTicker() int {
 	return 0
 }
 
-// iperfReporterCallback is called by the iperfTest instance when a report needs to be printed.
-func iperfReporterCallback(test *iperfTest) {
+// iperfReporterCallback is called by the IperfTest instance when a report needs to be printed.
+func iperfReporterCallback(test *IperfTest) {
 	<-test.chStats // only call this function after stats
 	if test.state == TEST_RUNNING {
-		log.Debugf("TEST_RUNNING report, role = %v, mode = %v, done = %v", test.isServer, test.mode, test.done)
+		Log.Debugf("TEST_RUNNING report, role = %v, mode = %v, done = %v", test.isServer, test.mode, test.done)
 
 		test.iperfPrintIntermediate()
 	} else if test.state == TEST_END || test.state == IPERF_DISPLAY_RESULT {
-		log.Debugf("TEST_END report, role = %v, mode = %v, done = %v", test.isServer, test.mode, test.done)
+		Log.Debugf("TEST_END report, role = %v, mode = %v, done = %v", test.isServer, test.mode, test.done)
 
 		test.iperfPrintIntermediate()
 		test.iperfPrintResults()
 	} else {
-		log.Errorf("Unexpected state = %v, role = %v", test.state, test.isServer)
+		Log.Errorf("Unexpected state = %v, role = %v", test.state, test.isServer)
 	}
 }
 
-func (test *iperfTest) iperfPrintIntermediate() {
+func (test *IperfTest) iperfPrintIntermediate() {
 	var sumBytesTransfer, sumRtt uint64
 	var sumRetrans uint
 	var displayStartTime, displayEndTime float64
@@ -734,7 +751,7 @@ func (test *iperfTest) iperfPrintIntermediate() {
 		realEndTime := rp.interval_end_time.Sub(sp.result.start_time)
 
 		if durNotSame(supposedStartTime, realStartTime) {
-			log.Errorf("Start time differ from expected. supposed = %v, real = %v",
+			Log.Errorf("Start time differ from expected. supposed = %v, real = %v",
 				supposedStartTime.Nanoseconds()/MS_TO_NS, realStartTime.Nanoseconds()/MS_TO_NS)
 			//return
 		}
@@ -789,7 +806,7 @@ func durNotSame(d time.Duration, d2 time.Duration) bool {
 	return false
 }
 
-func (test *iperfTest) iperfPrintResults() {
+func (test *IperfTest) iperfPrintResults() {
 	fmt.Printf(SUMMARY_SEPERATOR)
 	if test.proto.name() == TCP_NAME {
 		fmt.Printf(TCP_RESULT_HEADER)
@@ -798,7 +815,7 @@ func (test *iperfTest) iperfPrintResults() {
 	}
 
 	if len(test.streams) <= 0 {
-		log.Errorf("No streams available.")
+		Log.Errorf("No streams available.")
 
 		return
 	}
@@ -873,7 +890,7 @@ func (test *iperfTest) iperfPrintResults() {
 }
 
 // Gather statistics during a test.
-func iperfStatsCallback(test *iperfTest) {
+func iperfStatsCallback(test *IperfTest) {
 	for _, sp := range test.streams {
 		tempResult := iperf_interval_results{}
 		rp := sp.result

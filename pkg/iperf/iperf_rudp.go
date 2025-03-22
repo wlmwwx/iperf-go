@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"encoding/binary"
@@ -19,8 +19,8 @@ func (r *rudpProto) name() string {
 	return RUDP_NAME
 }
 
-func (r *rudpProto) accept(test *iperfTest) (net.Conn, error) {
-	log.Debugf("Enter RUDP accept")
+func (r *rudpProto) accept(test *IperfTest) (net.Conn, error) {
+	Log.Debugf("Enter RUDP accept")
 
 	conn, err := test.protoListener.Accept()
 	if err != nil {
@@ -33,15 +33,15 @@ func (r *rudpProto) accept(test *iperfTest) (net.Conn, error) {
 	signal := binary.LittleEndian.Uint32(buf[:])
 
 	if err != nil || n != 4 || signal != ACCEPT_SIGNAL {
-		log.Errorf("RUDP Receive Unexpected signal")
+		Log.Errorf("RUDP Receive Unexpected signal")
 	}
 
-	log.Debugf("RUDP accept succeed. signal = %v", signal)
+	Log.Debugf("RUDP accept succeed. signal = %v", signal)
 
 	return conn, nil
 }
 
-func (r *rudpProto) listen(test *iperfTest) (net.Listener, error) {
+func (r *rudpProto) listen(test *IperfTest) (net.Listener, error) {
 	listener, err := RUDP.ListenWithOptions("0.0.0.0:"+strconv.Itoa(int(test.port)), nil, int(test.setting.dataShards), int(test.setting.parityShards))
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (r *rudpProto) listen(test *iperfTest) (net.Listener, error) {
 	return listener, nil
 }
 
-func (r *rudpProto) connect(test *iperfTest) (net.Conn, error) {
+func (r *rudpProto) connect(test *IperfTest) (net.Conn, error) {
 	conn, err := RUDP.DialWithOptions(test.addr+":"+strconv.Itoa(int(test.port)), nil, int(test.setting.dataShards), int(test.setting.parityShards))
 
 	if err != nil {
@@ -73,10 +73,10 @@ func (r *rudpProto) connect(test *iperfTest) (net.Conn, error) {
 	n, err := conn.Write(buf)
 
 	if err != nil || n != 4 {
-		log.Errorf("RUDP send accept signal failed")
+		Log.Errorf("RUDP send accept signal failed")
 	}
 
-	log.Debugf("RUDP connect succeed.")
+	Log.Debugf("RUDP connect succeed.")
 
 	return conn, nil
 }
@@ -87,18 +87,18 @@ func (r *rudpProto) send(sp *iperfStream) int {
 		var serr *net.OpError
 
 		if errors.As(err, &serr) {
-			log.Debugf("r conn already close = %v", serr)
+			Log.Debugf("r conn already close = %v", serr)
 
 			return -1
 		}
 
-		log.Errorf("r write err = %T %v", err, err)
+		Log.Errorf("r write err = %T %v", err, err)
 
 		return -2
 	}
 
 	if n < 0 {
-		log.Errorf("r write err. n = %v", n)
+		Log.Errorf("r write err. n = %v", n)
 
 		return n
 	}
@@ -117,12 +117,12 @@ func (r *rudpProto) recv(sp *iperfStream) int {
 	if err != nil {
 		var serr *net.OpError
 		if errors.As(err, &serr) {
-			log.Debugf("r conn already close = %v", serr)
+			Log.Debugf("r conn already close = %v", serr)
 
 			return -1
 		}
 
-		log.Errorf("r recv err = %T %v", err, err)
+		Log.Errorf("r recv err = %T %v", err, err)
 
 		return -2
 	}
@@ -139,17 +139,17 @@ func (r *rudpProto) recv(sp *iperfStream) int {
 	return n
 }
 
-func (r *rudpProto) init(test *iperfTest) int {
+func (r *rudpProto) init(test *IperfTest) int {
 	for _, sp := range test.streams {
 		err := sp.conn.(*RUDP.UDPSession).SetReadBuffer(int(test.setting.readBufSize))
 		if err != nil {
-			log.Errorf("r set read buffer failed. err = %v", err)
+			Log.Errorf("r set read buffer failed. err = %v", err)
 			return 0
 		}
 
 		err = sp.conn.(*RUDP.UDPSession).SetWriteBuffer(int(test.setting.writeBufSize))
 		if err != nil {
-			log.Errorf("r set write buffer failed. err = %v", err)
+			Log.Errorf("r set write buffer failed. err = %v", err)
 			return 0
 		}
 
@@ -158,7 +158,7 @@ func (r *rudpProto) init(test *iperfTest) int {
 
 		err = sp.conn.(*RUDP.UDPSession).SetDSCP(46)
 		if err != nil {
-			log.Errorf("r set dscp failed. err = %v", err)
+			Log.Errorf("r set dscp failed. err = %v", err)
 
 			return 0
 		}
@@ -168,7 +168,7 @@ func (r *rudpProto) init(test *iperfTest) int {
 
 		err = sp.conn.(*RUDP.UDPSession).SetDeadline(time.Now().Add(time.Minute))
 		if err != nil {
-			log.Errorf("r set deadline failed. err = %v", err)
+			Log.Errorf("r set deadline failed. err = %v", err)
 
 			return 0
 		}
@@ -195,7 +195,7 @@ func (r *rudpProto) init(test *iperfTest) int {
 	return 0
 }
 
-func (r *rudpProto) statsCallback(test *iperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
+func (r *rudpProto) statsCallback(test *IperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
 	rp := sp.result
 
 	totalRetrans := uint(RUDP.DefaultSnmp.RetransSegs)
@@ -260,7 +260,7 @@ func (r *rudpProto) statsCallback(test *iperfTest, sp *iperfStream, tempResult *
 	return 0
 }
 
-func (r *rudpProto) teardown(test *iperfTest) int {
+func (r *rudpProto) teardown(test *IperfTest) int {
 	if logging.GetLevel("r") == logging.INFO ||
 		logging.GetLevel("r") == logging.DEBUG {
 

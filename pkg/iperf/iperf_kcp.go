@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"encoding/binary"
@@ -17,8 +17,8 @@ func (*kcpProto) name() string {
 	return KCP_NAME
 }
 
-func (*kcpProto) accept(test *iperfTest) (net.Conn, error) {
-	log.Debugf("Enter KCP accept")
+func (*kcpProto) accept(test *IperfTest) (net.Conn, error) {
+	Log.Debugf("Enter KCP accept")
 
 	conn, err := test.protoListener.Accept()
 	if err != nil {
@@ -31,15 +31,15 @@ func (*kcpProto) accept(test *iperfTest) (net.Conn, error) {
 	signal := binary.LittleEndian.Uint32(buf[:])
 
 	if err != nil || n != 4 || signal != ACCEPT_SIGNAL {
-		log.Errorf("KCP Receive Unexpected signal")
+		Log.Errorf("KCP Receive Unexpected signal")
 	}
 
-	log.Debugf("KCP accept succeed. signal = %v", signal)
+	Log.Debugf("KCP accept succeed. signal = %v", signal)
 
 	return conn, nil
 }
 
-func (*kcpProto) listen(test *iperfTest) (net.Listener, error) {
+func (*kcpProto) listen(test *IperfTest) (net.Listener, error) {
 	listener, err := KCP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), nil, int(test.setting.dataShards), int(test.setting.parityShards))
 	err = listener.SetReadBuffer(int(test.setting.readBufSize))
 	if err != nil {
@@ -54,7 +54,7 @@ func (*kcpProto) listen(test *iperfTest) (net.Listener, error) {
 	return listener, nil
 }
 
-func (*kcpProto) connect(test *iperfTest) (net.Conn, error) {
+func (*kcpProto) connect(test *IperfTest) (net.Conn, error) {
 	conn, err := KCP.DialWithOptions(test.addr+":"+strconv.Itoa(int(test.port)), nil, int(test.setting.dataShards), int(test.setting.parityShards))
 	if err != nil {
 		return nil, err
@@ -65,10 +65,10 @@ func (*kcpProto) connect(test *iperfTest) (net.Conn, error) {
 
 	n, err := conn.Write(buf)
 	if err != nil || n != 4 {
-		log.Errorf("KCP send accept signal failed")
+		Log.Errorf("KCP send accept signal failed")
 	}
 
-	log.Debugf("KCP connect succeed.")
+	Log.Debugf("KCP connect succeed.")
 
 	return conn, nil
 }
@@ -78,18 +78,18 @@ func (*kcpProto) send(sp *iperfStream) int {
 	if err != nil {
 		var serr *net.OpError
 		if errors.As(err, &serr) {
-			log.Debugf("kcp conn already close = %v", serr)
+			Log.Debugf("kcp conn already close = %v", serr)
 
 			return -1
 		}
 
-		log.Errorf("kcp write err = %T %v", err, err)
+		Log.Errorf("kcp write err = %T %v", err, err)
 
 		return -2
 	}
 
 	if n < 0 {
-		log.Errorf("kcp write err. n = %v", n)
+		Log.Errorf("kcp write err. n = %v", n)
 
 		return n
 	}
@@ -109,12 +109,12 @@ func (*kcpProto) recv(sp *iperfStream) int {
 		var serr *net.OpError
 
 		if errors.As(err, &serr) {
-			log.Debugf("kcp conn already close = %v", serr)
+			Log.Debugf("kcp conn already close = %v", serr)
 
 			return -1
 		}
 
-		log.Errorf("kcp recv err = %T %v", err, err)
+		Log.Errorf("kcp recv err = %T %v", err, err)
 
 		return -2
 	}
@@ -132,18 +132,18 @@ func (*kcpProto) recv(sp *iperfStream) int {
 	return n
 }
 
-func (*kcpProto) init(test *iperfTest) int {
+func (*kcpProto) init(test *IperfTest) int {
 	for _, sp := range test.streams {
 		err := sp.conn.(*KCP.UDPSession).SetReadBuffer(int(test.setting.readBufSize))
 		if err != nil {
-			log.Errorf("SetReadBuffer err = %v", err)
+			Log.Errorf("SetReadBuffer err = %v", err)
 
 			return 0
 		}
 
 		err = sp.conn.(*KCP.UDPSession).SetWriteBuffer(int(test.setting.writeBufSize))
 		if err != nil {
-			log.Errorf("SetWriteBuffer err = %v", err)
+			Log.Errorf("SetWriteBuffer err = %v", err)
 
 			return 0
 		}
@@ -153,7 +153,7 @@ func (*kcpProto) init(test *iperfTest) int {
 
 		err = sp.conn.(*KCP.UDPSession).SetDSCP(46)
 		if err != nil {
-			log.Errorf("SetDSCP err = %v", err)
+			Log.Errorf("SetDSCP err = %v", err)
 
 			return 0
 		}
@@ -163,7 +163,7 @@ func (*kcpProto) init(test *iperfTest) int {
 
 		err = sp.conn.(*KCP.UDPSession).SetDeadline(time.Now().Add(time.Minute))
 		if err != nil {
-			log.Errorf("SetDeadline err = %v", err)
+			Log.Errorf("SetDeadline err = %v", err)
 
 			return 0
 		}
@@ -190,7 +190,7 @@ func (*kcpProto) init(test *iperfTest) int {
 	return 0
 }
 
-func (*kcpProto) statsCallback(_ *iperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
+func (*kcpProto) statsCallback(_ *IperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
 	rp := sp.result
 
 	totalRetrans := uint(KCP.DefaultSnmp.RetransSegs)
@@ -249,6 +249,6 @@ func (*kcpProto) statsCallback(_ *iperfTest, sp *iperfStream, tempResult *iperf_
 	return 0
 }
 
-func (*kcpProto) teardown(_ *iperfTest) int {
+func (*kcpProto) teardown(_ *IperfTest) int {
 	return 0
 }

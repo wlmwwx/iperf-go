@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"fmt"
@@ -71,16 +71,16 @@ const (
 	SUMMARY_SEPERATOR         = "- - - - - - - - - - - - - - - - SUMMARY - - - - - - - - - - - - - - - -\n"
 )
 
-type iperfTest struct {
-	isServer bool
-	mode     bool // true for sender. false for receiver
+type IperfTest struct {
+	isServer  bool
+	mode      bool // true for sender. false for receiver
 	reverse   bool // server send?
 	addr      string
 	port      uint
 	state     uint
 	duration  uint // sec
-	noDelay  bool
-	interval uint // ms
+	noDelay   bool
+	interval  uint // ms
 	proto     protocol
 	protocols []protocol
 
@@ -88,18 +88,18 @@ type iperfTest struct {
 
 	listener      net.Listener
 	protoListener net.Listener
-	ctrlConn net.Conn
-	ctrlChan chan uint
-	setting   *iperfSetting
-	streamNum uint
-	streams   []*iperfStream
+	ctrlConn      net.Conn
+	ctrlChan      chan uint
+	setting       *iperfSetting
+	streamNum     uint
+	streams       []*iperfStream
 
 	/* test statistics */
 	bytesReceived  uint64
 	blocksReceived uint64
-	bytesSent  uint64
-	blocksSent uint64
-	done       bool
+	bytesSent      uint64
+	blocksSent     uint64
+	done           bool
 
 	/* timer */
 	timer ITimer
@@ -110,8 +110,8 @@ type iperfTest struct {
 
 	/* call back function */
 
-	statsCallback    func(test *iperfTest)
-	reporterCallback func(test *iperfTest)
+	statsCallback    func(test *IperfTest)
+	reporterCallback func(test *IperfTest)
 	//on_new_stream 	on_new_stream_callback
 	//on_test_start 	on_test_start_callback
 	//on_connect 		on_connect_callback
@@ -127,24 +127,24 @@ type iperfTest struct {
 type protocol interface {
 	//name string
 	name() string
-	accept(test *iperfTest) (net.Conn, error)
-	listen(test *iperfTest) (net.Listener, error)
-	connect(test *iperfTest) (net.Conn, error)
+	accept(test *IperfTest) (net.Conn, error)
+	listen(test *IperfTest) (net.Listener, error)
+	connect(test *IperfTest) (net.Conn, error)
 	send(test *iperfStream) int
 	recv(test *iperfStream) int
 	// init will be called before send/recv data
-	init(test *iperfTest) int
+	init(test *IperfTest) int
 	// teardown will be called before send/recv data
-	teardown(test *iperfTest) int
+	teardown(test *IperfTest) int
 	// statsCallback will be invoked intervally, please get some other statistics in this function
-	statsCallback(test *iperfTest, sp *iperfStream, tempResult *iperf_interval_results) int
+	statsCallback(test *IperfTest, sp *iperfStream, tempResult *iperf_interval_results) int
 }
 
 type iperfStream struct {
-	role        int //SENDER_STREAM or RECEIVE_STREAM
-	test        *iperfTest
-	result  *iperf_stream_results
-	canSend bool
+	role       int //SENDER_STREAM or RECEIVE_STREAM
+	test       *IperfTest
+	result     *iperf_stream_results
+	canSend    bool
 	conn       net.Conn
 	sendTicker ITicker
 
@@ -172,7 +172,7 @@ type iperfSetting struct {
 	noCong        bool // bbr or not?
 	fastResend    uint
 	dataShards    uint // for fec
-	parityShards uint
+	parityShards  uint
 }
 
 // params to exchange
