@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import "time"
 
@@ -29,7 +29,7 @@ func timerCreate(now time.Time, proc timerProc, data TimerClientData, dur uint /
 		for {
 			select {
 			case <-done:
-				log.Debugf("Timer recv done. dur: %v", dur)
+				Log.Debugf("Timer recv done. dur: %v", dur)
 
 				return
 			case t := <-timer.C:
@@ -56,7 +56,7 @@ func tickerCreate(_ time.Time, proc timerProc, data TimerClientData, interval ui
 		for {
 			select {
 			case <-done:
-				log.Debugf("Ticker recv done. interval:%v", interval)
+				Log.Debugf("Ticker recv done. interval:%v", interval)
 
 				return
 			case t := <-ticker.C:

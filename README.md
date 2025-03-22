@@ -2,9 +2,9 @@
 
 **A lightweight, extensible network performance testing tool written in Go**
 
-**2025 Updates**
+**3/22/2025 Updates**
 
-I have forked this project to add new features and fix bugs. It is currently usable, and I intend to maintain it actively.
+I have forked this project to add new features and fix bugs. It is currently usable, but in some desperate need of refactoring. I will be working on this in the coming weeks.
 
 - Original repository: [https://github.com/zezhongwang/iperf-go](https://github.com/zezhongwang/iperf-go)
 - Improvements borrowed from: [https://github.com/damao33/iperf-go/](https://github.com/damao33/iperf-go/), especially for the RUDP protocol implementation.

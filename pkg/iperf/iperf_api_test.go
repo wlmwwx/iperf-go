@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"encoding/binary"
@@ -15,7 +15,7 @@ const portServer = 5021
 const addrServer = "127.0.0.1:5021"
 const addrClient = "127.0.0.1"
 
-var serverTest, clientTest *iperfTest
+var serverTest, clientTest *IperfTest
 
 func init() {
 
@@ -23,10 +23,10 @@ func init() {
 	logging.SetLevel(logging.ERROR, "rudp")
 	/* log settting */
 
-	serverTest = newIperfTest()
-	clientTest = newIperfTest()
-	serverTest.init()
-	clientTest.init()
+	serverTest = NewIperfTest()
+	clientTest = NewIperfTest()
+	serverTest.Init()
+	clientTest.Init()
 
 	serverTest.isServer = true
 	serverTest.port = portServer
@@ -90,22 +90,22 @@ func RecvCheckState(t *testing.T, state int) int {
 	buf := make([]byte, 4)
 	if n, err := clientTest.ctrlConn.Read(buf); err == nil {
 		s := binary.LittleEndian.Uint32(buf[:])
-		log.Debugf("Ctrl conn receive n = %v state = [%v]", n, s)
+		Log.Debugf("Ctrl conn receive n = %v state = [%v]", n, s)
 		//s, err := strconv.Atoi(string(buf[:n]))
 		if s != uint32(state) {
-			log.Errorf("recv state[%v] != expected state[%v]", s, state)
+			Log.Errorf("recv state[%v] != expected state[%v]", s, state)
 			t.FailNow()
 			return -1
 		}
 		clientTest.state = uint(state)
-		log.Infof("Client Enter %v state", clientTest.state)
+		Log.Infof("Client Enter %v state", clientTest.state)
 	}
 	return 0
 }
 
 func CreateStreams(t *testing.T) int {
 	if rtn := clientTest.createStreams(); rtn < 0 {
-		log.Errorf("create_streams failed. rtn = %v", rtn)
+		Log.Errorf("create_streams failed. rtn = %v", rtn)
 		return -1
 	}
 	// check client state
@@ -156,26 +156,26 @@ func CreateStreams(t *testing.T) int {
 
 func handleTestStart(t *testing.T) int {
 	if rtn := clientTest.initTest(); rtn < 0 {
-		log.Errorf("init_test failed. rtn = %v", rtn)
+		Log.Errorf("init_test failed. rtn = %v", rtn)
 
 		return -1
 	}
 
 	if rtn := clientTest.createClientTimer(); rtn < 0 {
-		log.Errorf("create_client_timer failed. rtn = %v", rtn)
+		Log.Errorf("create_client_timer failed. rtn = %v", rtn)
 
 		return -1
 	}
 
 	if rtn := clientTest.createClientOmitTimer(); rtn < 0 {
-		log.Errorf("create_client_omit_timer failed. rtn = %v", rtn)
+		Log.Errorf("create_client_omit_timer failed. rtn = %v", rtn)
 
 		return -1
 	}
 
 	if clientTest.mode == IPERF_SENDER {
 		if rtn := clientTest.createSenderTicker(); rtn < 0 {
-			log.Errorf("create_client_send_timer failed. rtn = %v", rtn)
+			Log.Errorf("create_client_send_timer failed. rtn = %v", rtn)
 
 			return -1
 		}
@@ -214,18 +214,18 @@ func handleTestStart(t *testing.T) int {
 }
 
 func handleTestRunning(t *testing.T) int {
-	log.Info("Client enter Test Running state...")
+	Log.Info("Client enter Test Running state...")
 	for i, sp := range clientTest.streams {
 		if clientTest.mode == IPERF_SENDER {
 			go sp.iperfSend(clientTest)
-			log.Infof("Stream %v start sending.", i)
+			Log.Infof("Stream %v start sending.", i)
 		} else {
 			go sp.iperfRecv(clientTest)
-			log.Infof("Stream %v start receiving.", i)
+			Log.Infof("Stream %v start receiving.", i)
 		}
 	}
 
-	log.Info("Client all Stream start. Wait for finish...")
+	Log.Info("Client all Stream start. Wait for finish...")
 	// wait for send/write end (triggered by timer)
 	//for {
 	//	if client_test.done {
@@ -239,7 +239,7 @@ func handleTestRunning(t *testing.T) int {
 		assert.Equal(t, s, uint(TEST_END))
 	}
 
-	log.Infof("Client All Send Stream closed.")
+	Log.Infof("Client All Send Stream closed.")
 
 	clientTest.done = true
 
@@ -248,7 +248,7 @@ func handleTestRunning(t *testing.T) int {
 	}
 
 	if clientTest.setSendState(TEST_END) < 0 {
-		log.Errorf("set_send_state failed. %v", TEST_END)
+		Log.Errorf("set_send_state failed. %v", TEST_END)
 
 		t.FailNow()
 	}
@@ -314,7 +314,7 @@ func handleTestRunning(t *testing.T) int {
 
 func handleExchangeResult(t *testing.T) int {
 	if rtn := clientTest.exchangeResults(); rtn < 0 {
-		log.Errorf("exchange_results failed. rtn = %v", rtn)
+		Log.Errorf("exchange_results failed. rtn = %v", rtn)
 
 		return -1
 	}

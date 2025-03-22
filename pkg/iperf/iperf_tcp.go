@@ -1,4 +1,4 @@
-package main
+package iperf
 
 import (
 	"errors"
@@ -14,8 +14,8 @@ func (t *TCPProto) name() string {
 	return TCP_NAME
 }
 
-func (t *TCPProto) accept(test *iperfTest) (net.Conn, error) {
-	log.Debugf("Enter TCP accept")
+func (t *TCPProto) accept(test *IperfTest) (net.Conn, error) {
+	Log.Debugf("Enter TCP accept")
 
 	conn, err := test.protoListener.Accept()
 	if err != nil {
@@ -25,14 +25,14 @@ func (t *TCPProto) accept(test *iperfTest) (net.Conn, error) {
 	return conn, nil
 }
 
-func (t *TCPProto) listen(test *iperfTest) (net.Listener, error) {
-	log.Debugf("Enter TCP listen")
+func (t *TCPProto) listen(test *IperfTest) (net.Listener, error) {
+	Log.Debugf("Enter TCP listen")
 
 	return test.listener, nil
 }
 
-func (t *TCPProto) connect(test *iperfTest) (net.Conn, error) {
-	log.Debugf("Enter TCP connect")
+func (t *TCPProto) connect(test *IperfTest) (net.Conn, error) {
+	Log.Debugf("Enter TCP connect")
 
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", test.addr+":"+strconv.Itoa(int(test.port)))
 	if err != nil {
@@ -46,7 +46,7 @@ func (t *TCPProto) connect(test *iperfTest) (net.Conn, error) {
 
 	err = conn.SetDeadline(time.Now().Add(time.Duration(test.duration+5) * time.Second))
 	if err != nil {
-		log.Errorf("SetDeadline err: %v", err)
+		Log.Errorf("SetDeadline err: %v", err)
 
 		return nil, err
 	}
@@ -60,12 +60,12 @@ func (t *TCPProto) send(sp *iperfStream) int {
 		var serr *net.OpError
 
 		if errors.As(err, &serr) {
-			log.Debugf("tcp conn already closed = %v", serr)
+			Log.Debugf("tcp conn already closed = %v", serr)
 
 			return -1
 		}
 
-		log.Errorf("tcp write err = %T %v", err, err)
+		Log.Errorf("tcp write err = %T %v", err, err)
 
 		return -2
 	}
@@ -77,7 +77,7 @@ func (t *TCPProto) send(sp *iperfStream) int {
 	sp.result.bytes_sent += uint64(n)
 	sp.result.bytes_sent_this_interval += uint64(n)
 
-	log.Debugf("TCP sent %d bytes, total sent: %d", n, sp.result.bytes_sent)
+	Log.Debugf("TCP sent %d bytes, total sent: %d", n, sp.result.bytes_sent)
 
 	return n
 }
@@ -88,12 +88,12 @@ func (t *TCPProto) recv(sp *iperfStream) int {
 		var serr *net.OpError
 
 		if errors.As(err, &serr) {
-			log.Debugf("tcp conn already closed = %v", serr)
+			Log.Debugf("tcp conn already closed = %v", serr)
 
 			return -1
 		}
 
-		log.Errorf("tcp recv err = %T %v", err, err)
+		Log.Errorf("tcp recv err = %T %v", err, err)
 
 		return -2
 	}
@@ -109,12 +109,12 @@ func (t *TCPProto) recv(sp *iperfStream) int {
 	return n
 }
 
-func (t *TCPProto) init(test *iperfTest) int {
+func (t *TCPProto) init(test *IperfTest) int {
 	if test.noDelay {
 		for _, sp := range test.streams {
 			err := sp.conn.(*net.TCPConn).SetNoDelay(test.noDelay)
 			if err != nil {
-				log.Errorf("SetNoDelay err: %v", err)
+				Log.Errorf("SetNoDelay err: %v", err)
 
 				return -1
 			}
@@ -124,7 +124,7 @@ func (t *TCPProto) init(test *iperfTest) int {
 	return 0
 }
 
-func (t *TCPProto) statsCallback(test *iperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
+func (t *TCPProto) statsCallback(test *IperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
 	if test.proto.name() == TCP_NAME {
 		rp := sp.result
 
@@ -151,6 +151,6 @@ func (t *TCPProto) statsCallback(test *iperfTest, sp *iperfStream, tempResult *i
 	return 0
 }
 
-func (t *TCPProto) teardown(test *iperfTest) int {
+func (t *TCPProto) teardown(test *IperfTest) int {
 	return 0
 }
