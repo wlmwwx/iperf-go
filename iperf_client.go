@@ -107,7 +107,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 		} else {
 			log.Errorf("ctrl_conn read failed. err=%T, %v", err, err)
 			test.ctrl_conn.Close()
-			test.ctrl_chan <- IPERF_DONE // Signal completion on error
+			test.ctrl_chan <- IPERF_DONE
 			return
 		}
 
@@ -115,7 +115,7 @@ func (test *iperf_test) handleClientCtrlMsg() {
 		case IPERF_EXCHANGE_PARAMS:
 			if rtn := test.exchange_params(); rtn < 0 {
 				log.Errorf("exchange_params failed. rtn = %v", rtn)
-				test.ctrl_chan <- IPERF_DONE // Signal completion on error
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 		case IPERF_CREATE_STREAM:
@@ -152,13 +152,14 @@ func (test *iperf_test) handleClientCtrlMsg() {
 		case IPERF_EXCHANGE_RESULT:
 			if rtn := test.exchange_results(); rtn < 0 {
 				log.Errorf("exchange_results failed. rtn = %v", rtn)
-				test.ctrl_chan <- IPERF_DONE // Signal completion on error
+				test.ctrl_chan <- IPERF_DONE
 				return
 			}
 		case IPERF_DISPLAY_RESULT:
 			test.client_end()
 		case IPERF_DONE:
 			test.ctrl_chan <- IPERF_DONE
+			return // Exit loop on IPERF_DONE
 		case SERVER_TERMINATE:
 			old_state := test.state
 			test.state = IPERF_DISPLAY_RESULT

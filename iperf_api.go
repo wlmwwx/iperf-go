@@ -568,21 +568,28 @@ func (sp *iperf_stream) iperf_recv(test *iperf_test) {
 called by multi streams. Be careful the function called here
 */
 func (sp *iperf_stream) iperf_send(test *iperf_test) {
-	// travel all the stream and start receive
+	const targetRate = 100 * MB_TO_B * 8 // 100 Mb/s in bits
+	sendInterval := time.Duration(sp.bufferSize() * 8 * 1000 / targetRate) * time.Millisecond
+	ticker := time.NewTicker(sendInterval)
+	defer ticker.Stop()
+
 	for {
-		if sp.can_send {
-			var n int
-			if n = sp.snd(sp); n < 0 {
-				if n == -1 {
-					log.Debugf("Iperf send stream closed.")
+		select {
+		case <-ticker.C:
+			if sp.can_send {
+				n := sp.snd(sp)
+				if n < 0 {
+					if n == -1 {
+						log.Debugf("Iperf send stream closed.")
+						return
+					}
+					log.Error("Iperf streams send failed. %v", n)
 					return
 				}
-				log.Error("Iperf streams send failed. %v", n)
-				return
+				test.bytes_sent += uint64(n)
+				test.blocks_sent += 1
+				log.Debugf("Stream sent data %v bytes of total %v bytes", n, test.bytes_sent)
 			}
-			test.bytes_sent += uint64(n)
-			test.blocks_sent += 1
-			log.Debugf("Stream sent data %v bytes of total %v bytes", n, test.bytes_sent)
 		}
 		if test.setting.burst == false {
 			test.check_throttle(sp, time.Now())
@@ -591,11 +598,15 @@ func (sp *iperf_stream) iperf_send(test *iperf_test) {
 			(test.setting.bytes != 0 && test.bytes_sent >= test.setting.bytes) ||
 			(test.setting.blocks != 0 && test.blocks_sent >= test.setting.blocks) {
 			test.ctrl_chan <- TEST_END
-			// end sending
 			log.Debugf("Stream Quit sending")
 			return
 		}
 	}
+}
+
+// Helper to get buffer size
+func (sp *iperf_stream) bufferSize() int {
+	return len(sp.buffer)
 }
 
 func (test *iperf_test) create_sender_ticker() int {
