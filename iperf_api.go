@@ -350,7 +350,7 @@ func (test *iperf_test) initTest() int {
 }
 
 func (test *iperf_test) init() {
-	test.protocols = append(test.protocols, new(TCPProto), new(rudp_proto), new(kcp_proto))
+	test.protocols = append(test.protocols, new(TCPProto), new(rudp_proto), new(kcpProto))
 }
 
 func (test *iperf_test) parseArguments() int {
