@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var PROTOCOL_LIST = []string{"tcp", "udp", "rudp", "kcp"}
+var ProtocolList = []string{"tcp", "udp", "rudp", "kcp"}
 
 const (
 	IPERF_START           = 1
@@ -71,47 +71,47 @@ const (
 	SUMMARY_SEPERATOR         = "- - - - - - - - - - - - - - - - SUMMARY - - - - - - - - - - - - - - - -\n"
 )
 
-type iperf_test struct {
-	is_server bool
-	mode      bool // true for sender. false for receiver
+type iperfTest struct {
+	isServer bool
+	mode     bool // true for sender. false for receiver
 	reverse   bool // server send?
 	addr      string
 	port      uint
 	state     uint
 	duration  uint // sec
-	no_delay  bool
-	interval  uint // ms
+	noDelay  bool
+	interval uint // ms
 	proto     protocol
 	protocols []protocol
 
 	/* stream */
 
-	listener       net.Listener
-	proto_listener net.Listener
-	ctrl_conn      net.Conn
-	ctrl_chan      chan uint
-	setting        *iperf_setting
-	stream_num     uint
-	streams        []*iperf_stream
+	listener      net.Listener
+	protoListener net.Listener
+	ctrlConn net.Conn
+	ctrlChan chan uint
+	setting   *iperfSetting
+	streamNum uint
+	streams   []*iperfStream
 
 	/* test statistics */
-	bytes_received  uint64
-	blocks_received uint64
-	bytes_sent      uint64
-	blocks_sent     uint64
-	done            bool
+	bytesReceived  uint64
+	blocksReceived uint64
+	bytesSent  uint64
+	blocksSent uint64
+	done       bool
 
 	/* timer */
 	timer ITimer
 	//omit_timer 		ITimer  // not used yet
-	stats_ticker  ITicker
-	report_ticker ITicker
-	chStats       chan bool
+	statsTicker  ITicker
+	reportTicker ITicker
+	chStats      chan bool
 
 	/* call back function */
 
-	stats_callback    func(test *iperf_test)
-	reporter_callback func(test *iperf_test)
+	statsCallback    func(test *iperfTest)
+	reporterCallback func(test *iperfTest)
 	//on_new_stream 	on_new_stream_callback
 	//on_test_start 	on_test_start_callback
 	//on_connect 		on_connect_callback
@@ -127,52 +127,52 @@ type iperf_test struct {
 type protocol interface {
 	//name string
 	name() string
-	accept(test *iperf_test) (net.Conn, error)
-	listen(test *iperf_test) (net.Listener, error)
-	connect(test *iperf_test) (net.Conn, error)
-	send(test *iperf_stream) int
-	recv(test *iperf_stream) int
+	accept(test *iperfTest) (net.Conn, error)
+	listen(test *iperfTest) (net.Listener, error)
+	connect(test *iperfTest) (net.Conn, error)
+	send(test *iperfStream) int
+	recv(test *iperfStream) int
 	// init will be called before send/recv data
-	init(test *iperf_test) int
+	init(test *iperfTest) int
 	// teardown will be called before send/recv data
-	teardown(test *iperf_test) int
-	// stats_callback will be invoked intervally, please get some other statistics in this function
-	stats_callback(test *iperf_test, sp *iperf_stream, temp_result *iperf_interval_results) int
+	teardown(test *iperfTest) int
+	// statsCallback will be invoked intervally, please get some other statistics in this function
+	statsCallback(test *iperfTest, sp *iperfStream, tempResult *iperf_interval_results) int
 }
 
-type iperf_stream struct {
+type iperfStream struct {
 	role        int //SENDER_STREAM or RECEIVE_STREAM
-	test        *iperf_test
-	result      *iperf_stream_results
-	can_send    bool
-	conn        net.Conn
-	send_ticker ITicker
+	test        *iperfTest
+	result  *iperf_stream_results
+	canSend bool
+	conn       net.Conn
+	sendTicker ITicker
 
 	buffer []byte //buffer to send
 
-	rcv func(sp *iperf_stream) int // return recv size. -1 represent EOF.
-	snd func(sp *iperf_stream) int // return send size. -1 represent socket close.
+	rcv func(sp *iperfStream) int // return recv size. -1 represent EOF.
+	snd func(sp *iperfStream) int // return send size. -1 represent socket close.
 
 }
 
-type iperf_setting struct {
-	blksize     uint
-	burst       bool // burst & rate & pacing_time should be set at the same time
-	rate        uint // bit per second
-	pacing_time uint // ms
-	bytes       uint64
-	blocks      uint64
+type iperfSetting struct {
+	blksize    uint
+	burst      bool // burst & rate & pacingTime should be set at the same time
+	rate       uint // bit per second
+	pacingTime uint // ms
+	bytes      uint64
+	blocks     uint64
 
 	// rudp only
-	snd_wnd        uint
-	rcv_wnd        uint
-	read_buf_size  uint // bit
-	write_buf_size uint // bit
-	flush_interval uint // ms
-	no_cong        bool // bbr or not?
-	fast_resend    uint
-	data_shards    uint // for fec
-	parity_shards  uint
+	sndWnd        uint
+	rcvWnd        uint
+	readBufSize   uint // bit
+	writeBufSize  uint // bit
+	flushInterval uint // ms
+	noCong        bool // bbr or not?
+	fastResend    uint
+	dataShards    uint // for fec
+	parityShards uint
 }
 
 // params to exchange

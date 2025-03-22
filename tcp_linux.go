@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func save_tcpInfo(sp *iperf_stream, rp *iperf_interval_results) int {
+func save_tcpInfo(sp *iperfStream, rp *iperf_interval_results) int {
 	info := getTCPInfo(sp.conn)
 	rp.rtt = uint(info.Tcpi_rtt)
 	rp.rto = uint(info.Tcpi_rto)

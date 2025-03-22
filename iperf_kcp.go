@@ -17,10 +17,10 @@ func (*kcpProto) name() string {
 	return KCP_NAME
 }
 
-func (*kcpProto) accept(test *iperf_test) (net.Conn, error) {
+func (*kcpProto) accept(test *iperfTest) (net.Conn, error) {
 	log.Debugf("Enter KCP accept")
 
-	conn, err := test.proto_listener.Accept()
+	conn, err := test.protoListener.Accept()
 	if err != nil {
 		return nil, err
 	}
@@ -39,14 +39,14 @@ func (*kcpProto) accept(test *iperf_test) (net.Conn, error) {
 	return conn, nil
 }
 
-func (*kcpProto) listen(test *iperf_test) (net.Listener, error) {
-	listener, err := KCP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
-	err = listener.SetReadBuffer(int(test.setting.read_buf_size))
+func (*kcpProto) listen(test *iperfTest) (net.Listener, error) {
+	listener, err := KCP.ListenWithOptions(":"+strconv.Itoa(int(test.port)), nil, int(test.setting.dataShards), int(test.setting.parityShards))
+	err = listener.SetReadBuffer(int(test.setting.readBufSize))
 	if err != nil {
 		return nil, err
 	} // all income conn share the same underline packet conn, the buffer should be large
 
-	err = listener.SetWriteBuffer(int(test.setting.write_buf_size))
+	err = listener.SetWriteBuffer(int(test.setting.writeBufSize))
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +54,8 @@ func (*kcpProto) listen(test *iperf_test) (net.Listener, error) {
 	return listener, nil
 }
 
-func (*kcpProto) connect(test *iperf_test) (net.Conn, error) {
-	conn, err := KCP.DialWithOptions(test.addr+":"+strconv.Itoa(int(test.port)), nil, int(test.setting.data_shards), int(test.setting.parity_shards))
+func (*kcpProto) connect(test *iperfTest) (net.Conn, error) {
+	conn, err := KCP.DialWithOptions(test.addr+":"+strconv.Itoa(int(test.port)), nil, int(test.setting.dataShards), int(test.setting.parityShards))
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (*kcpProto) connect(test *iperf_test) (net.Conn, error) {
 	return conn, nil
 }
 
-func (*kcpProto) send(sp *iperf_stream) int {
+func (*kcpProto) send(sp *iperfStream) int {
 	n, err := sp.conn.(*KCP.UDPSession).Write(sp.buffer)
 	if err != nil {
 		var serr *net.OpError
@@ -101,7 +101,7 @@ func (*kcpProto) send(sp *iperf_stream) int {
 	return n
 }
 
-func (*kcpProto) recv(sp *iperf_stream) int {
+func (*kcpProto) recv(sp *iperfStream) int {
 	// recv is blocking
 	n, err := sp.conn.(*KCP.UDPSession).Read(sp.buffer)
 
@@ -132,23 +132,23 @@ func (*kcpProto) recv(sp *iperf_stream) int {
 	return n
 }
 
-func (*kcpProto) init(test *iperf_test) int {
+func (*kcpProto) init(test *iperfTest) int {
 	for _, sp := range test.streams {
-		err := sp.conn.(*KCP.UDPSession).SetReadBuffer(int(test.setting.read_buf_size))
+		err := sp.conn.(*KCP.UDPSession).SetReadBuffer(int(test.setting.readBufSize))
 		if err != nil {
 			log.Errorf("SetReadBuffer err = %v", err)
 
 			return 0
 		}
 
-		err = sp.conn.(*KCP.UDPSession).SetWriteBuffer(int(test.setting.write_buf_size))
+		err = sp.conn.(*KCP.UDPSession).SetWriteBuffer(int(test.setting.writeBufSize))
 		if err != nil {
 			log.Errorf("SetWriteBuffer err = %v", err)
 
 			return 0
 		}
 
-		sp.conn.(*KCP.UDPSession).SetWindowSize(int(test.setting.snd_wnd), int(test.setting.rcv_wnd))
+		sp.conn.(*KCP.UDPSession).SetWindowSize(int(test.setting.sndWnd), int(test.setting.rcvWnd))
 		sp.conn.(*KCP.UDPSession).SetStreamMode(true)
 
 		err = sp.conn.(*KCP.UDPSession).SetDSCP(46)
@@ -170,27 +170,27 @@ func (*kcpProto) init(test *iperf_test) int {
 
 		var noDelay, resend, nc int
 
-		if test.no_delay {
+		if test.noDelay {
 			noDelay = 1
 		} else {
 			noDelay = 0
 		}
 
-		if test.setting.no_cong {
+		if test.setting.noCong {
 			nc = 1
 		} else {
 			nc = 0
 		}
 
-		resend = int(test.setting.fast_resend)
+		resend = int(test.setting.fastResend)
 
-		sp.conn.(*KCP.UDPSession).SetNoDelay(noDelay, int(test.setting.flush_interval), resend, nc)
+		sp.conn.(*KCP.UDPSession).SetNoDelay(noDelay, int(test.setting.flushInterval), resend, nc)
 	}
 
 	return 0
 }
 
-func (*kcpProto) statsCallback(_ *iperf_test, sp *iperf_stream, tempResult *iperf_interval_results) int {
+func (*kcpProto) statsCallback(_ *iperfTest, sp *iperfStream, tempResult *iperf_interval_results) int {
 	rp := sp.result
 
 	totalRetrans := uint(KCP.DefaultSnmp.RetransSegs)
@@ -249,6 +249,6 @@ func (*kcpProto) statsCallback(_ *iperf_test, sp *iperf_stream, tempResult *iper
 	return 0
 }
 
-func (*kcpProto) teardown(_ *iperf_test) int {
+func (*kcpProto) teardown(_ *iperfTest) int {
 	return 0
 }

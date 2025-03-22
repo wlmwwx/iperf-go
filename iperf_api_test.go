@@ -15,7 +15,7 @@ const portServer = 5021
 const addrServer = "127.0.0.1:5021"
 const addrClient = "127.0.0.1"
 
-var serverTest, clientTest *iperf_test
+var serverTest, clientTest *iperfTest
 
 func init() {
 
@@ -28,16 +28,16 @@ func init() {
 	serverTest.init()
 	clientTest.init()
 
-	serverTest.is_server = true
+	serverTest.isServer = true
 	serverTest.port = portServer
 
-	clientTest.is_server = false
+	clientTest.isServer = false
 	clientTest.port = portServer
 	clientTest.addr = addrClient
 
 	clientTest.interval = 1000 // 1000 ms
 	clientTest.duration = 5    // 5 s for test
-	clientTest.stream_num = 1  // 1 stream only
+	clientTest.streamNum = 1   // 1 stream only
 	clientTest.setTestReverse(false)
 
 	//TCPSetting()
@@ -51,44 +51,44 @@ func init() {
 
 func TCPSetting() {
 	clientTest.setProtocol(TCP_NAME)
-	clientTest.no_delay = true
+	clientTest.noDelay = true
 	clientTest.setting.blksize = DEFAULT_TCP_BLKSIZE
 	clientTest.setting.burst = false
 	clientTest.setting.rate = 1024 * 1024 * 1024 * 1024 // b/s
-	clientTest.setting.pacing_time = 100                //ms
+	clientTest.setting.pacingTime = 100                 //ms
 }
 
 func RUDPSetting() {
 	clientTest.setProtocol(RUDP_NAME)
-	clientTest.no_delay = false
+	clientTest.noDelay = false
 	clientTest.setting.blksize = DEFAULT_RUDP_BLKSIZE
 	clientTest.setting.burst = true
-	clientTest.setting.no_cong = false // false for BBR control
-	clientTest.setting.snd_wnd = 10
-	clientTest.setting.rcv_wnd = 1024
-	clientTest.setting.read_buf_size = DEFAULT_READ_BUF_SIZE
-	clientTest.setting.write_buf_size = DEFAULT_WRITE_BUF_SIZE
-	clientTest.setting.flush_interval = DEFAULT_FLUSH_INTERVAL
-	clientTest.setting.data_shards = 3
-	clientTest.setting.parity_shards = 1
+	clientTest.setting.noCong = false // false for BBR control
+	clientTest.setting.sndWnd = 10
+	clientTest.setting.rcvWnd = 1024
+	clientTest.setting.readBufSize = DEFAULT_READ_BUF_SIZE
+	clientTest.setting.writeBufSize = DEFAULT_WRITE_BUF_SIZE
+	clientTest.setting.flushInterval = DEFAULT_FLUSH_INTERVAL
+	clientTest.setting.dataShards = 3
+	clientTest.setting.parityShards = 1
 }
 
 func KCPSetting() {
 	clientTest.setProtocol(KCP_NAME)
-	clientTest.no_delay = false
+	clientTest.noDelay = false
 	clientTest.setting.blksize = DEFAULT_RUDP_BLKSIZE
 	clientTest.setting.burst = true
-	clientTest.setting.no_cong = true // false for BBR control
-	clientTest.setting.snd_wnd = 512
-	clientTest.setting.rcv_wnd = 1024
-	clientTest.setting.read_buf_size = DEFAULT_READ_BUF_SIZE
-	clientTest.setting.write_buf_size = DEFAULT_WRITE_BUF_SIZE
-	clientTest.setting.flush_interval = DEFAULT_FLUSH_INTERVAL
+	clientTest.setting.noCong = true // false for BBR control
+	clientTest.setting.sndWnd = 512
+	clientTest.setting.rcvWnd = 1024
+	clientTest.setting.readBufSize = DEFAULT_READ_BUF_SIZE
+	clientTest.setting.writeBufSize = DEFAULT_WRITE_BUF_SIZE
+	clientTest.setting.flushInterval = DEFAULT_FLUSH_INTERVAL
 }
 
 func RecvCheckState(t *testing.T, state int) int {
 	buf := make([]byte, 4)
-	if n, err := clientTest.ctrl_conn.Read(buf); err == nil {
+	if n, err := clientTest.ctrlConn.Read(buf); err == nil {
 		s := binary.LittleEndian.Uint32(buf[:])
 		log.Debugf("Ctrl conn receive n = %v state = [%v]", n, s)
 		//s, err := strconv.Atoi(string(buf[:n]))
@@ -109,7 +109,7 @@ func CreateStreams(t *testing.T) int {
 		return -1
 	}
 	// check client state
-	assert.Equal(t, uint(len(clientTest.streams)), clientTest.stream_num)
+	assert.Equal(t, uint(len(clientTest.streams)), clientTest.streamNum)
 	for _, sp := range clientTest.streams {
 		assert.Equal(t, sp.test, clientTest)
 		if clientTest.mode == IPERF_SENDER {
@@ -118,13 +118,13 @@ func CreateStreams(t *testing.T) int {
 			assert.Equal(t, sp.role, RECEIVER_STREAM)
 		}
 		assert.Assert(t, sp.result != nil)
-		assert.Equal(t, sp.can_send, false) // set true after create_send_timer
+		assert.Equal(t, sp.canSend, false) // set true after create_send_timer
 		assert.Assert(t, sp.conn != nil)
-		assert.Assert(t, sp.send_ticker.ticker == nil) // ticker haven't been created yet
+		assert.Assert(t, sp.sendTicker.ticker == nil) // ticker haven't been created yet
 	}
 	time.Sleep(time.Millisecond * 10) // ensure server side has created all the streams
 	// check server state
-	assert.Equal(t, uint(len(serverTest.streams)), clientTest.stream_num)
+	assert.Equal(t, uint(len(serverTest.streams)), clientTest.streamNum)
 
 	for _, sp := range serverTest.streams {
 		assert.Equal(t, sp.test, serverTest)
@@ -137,15 +137,15 @@ func CreateStreams(t *testing.T) int {
 
 		assert.Assert(t, sp.result != nil)
 		if serverTest.mode == IPERF_SENDER {
-			assert.Equal(t, sp.can_send, true)
+			assert.Equal(t, sp.canSend, true)
 			if clientTest.setting.burst == true {
-				assert.Assert(t, sp.send_ticker.ticker == nil)
+				assert.Assert(t, sp.sendTicker.ticker == nil)
 			} else {
-				assert.Assert(t, sp.send_ticker.ticker != nil)
+				assert.Assert(t, sp.sendTicker.ticker != nil)
 			}
 		} else {
-			assert.Equal(t, sp.can_send, false)
-			assert.Assert(t, sp.send_ticker.ticker == nil)
+			assert.Equal(t, sp.canSend, false)
+			assert.Assert(t, sp.sendTicker.ticker == nil)
 		}
 
 		assert.Assert(t, sp.conn != nil)
@@ -185,19 +185,19 @@ func handleTestStart(t *testing.T) int {
 	for _, sp := range clientTest.streams {
 		assert.Assert(t, sp.result.start_time.Before(time.Now().Add(time.Duration(time.Millisecond))))
 		assert.Assert(t, sp.test.timer.timer != nil)
-		assert.Assert(t, sp.test.stats_ticker.ticker != nil)
-		assert.Assert(t, sp.test.report_ticker.ticker != nil)
+		assert.Assert(t, sp.test.statsTicker.ticker != nil)
+		assert.Assert(t, sp.test.reportTicker.ticker != nil)
 
 		if clientTest.mode == IPERF_SENDER {
-			assert.Equal(t, sp.can_send, true)
+			assert.Equal(t, sp.canSend, true)
 			if clientTest.setting.burst == true {
-				assert.Assert(t, sp.send_ticker.ticker == nil)
+				assert.Assert(t, sp.sendTicker.ticker == nil)
 			} else {
-				assert.Assert(t, sp.send_ticker.ticker != nil)
+				assert.Assert(t, sp.sendTicker.ticker != nil)
 			}
 		} else {
-			assert.Equal(t, sp.can_send, false)
-			assert.Assert(t, sp.send_ticker.ticker == nil)
+			assert.Equal(t, sp.canSend, false)
+			assert.Assert(t, sp.sendTicker.ticker == nil)
 		}
 	}
 
@@ -205,8 +205,8 @@ func handleTestStart(t *testing.T) int {
 	for _, sp := range serverTest.streams {
 		assert.Assert(t, sp.result.start_time.Before(time.Now().Add(time.Duration(time.Millisecond))))
 		assert.Assert(t, sp.test.timer.timer != nil)
-		assert.Assert(t, sp.test.stats_ticker.ticker != nil)
-		assert.Assert(t, sp.test.report_ticker.ticker != nil)
+		assert.Assert(t, sp.test.statsTicker.ticker != nil)
+		assert.Assert(t, sp.test.reportTicker.ticker != nil)
 		assert.Equal(t, sp.test.state, uint(TEST_RUNNING))
 	}
 
@@ -234,8 +234,8 @@ func handleTestRunning(t *testing.T) int {
 	//	}
 	//}
 
-	for i := 0; i < int(clientTest.stream_num); i++ {
-		s := <-clientTest.ctrl_chan
+	for i := 0; i < int(clientTest.streamNum); i++ {
+		s := <-clientTest.ctrlChan
 		assert.Equal(t, s, uint(TEST_END))
 	}
 
@@ -243,8 +243,8 @@ func handleTestRunning(t *testing.T) int {
 
 	clientTest.done = true
 
-	if clientTest.stats_callback != nil {
-		clientTest.stats_callback(clientTest)
+	if clientTest.statsCallback != nil {
+		clientTest.statsCallback(clientTest)
 	}
 
 	if clientTest.setSendState(TEST_END) < 0 {
@@ -269,11 +269,11 @@ func handleTestRunning(t *testing.T) int {
 	}
 
 	if clientTest.mode == IPERF_SENDER {
-		assert.Equal(t, clientTest.bytes_sent, totalBytes)
-		assert.Equal(t, clientTest.bytes_received, uint64(0))
+		assert.Equal(t, clientTest.bytesSent, totalBytes)
+		assert.Equal(t, clientTest.bytesReceived, uint64(0))
 	} else {
-		assert.Equal(t, clientTest.bytes_received, totalBytes)
-		assert.Equal(t, clientTest.bytes_sent, uint64(0))
+		assert.Equal(t, clientTest.bytesReceived, totalBytes)
+		assert.Equal(t, clientTest.bytesSent, uint64(0))
 	}
 
 	time.Sleep(time.Millisecond * 10) // ensure server change state
@@ -282,12 +282,12 @@ func handleTestRunning(t *testing.T) int {
 	assert.Equal(t, serverTest.done, true)
 	assert.Equal(t, serverTest.state, uint(IPERF_EXCHANGE_RESULT))
 
-	absoluteBytesDiff := int64(serverTest.bytes_received) - int64(clientTest.bytes_sent)
+	absoluteBytesDiff := int64(serverTest.bytesReceived) - int64(clientTest.bytesSent)
 	if absoluteBytesDiff < 0 {
 		absoluteBytesDiff = 0 - absoluteBytesDiff
 	}
 
-	if float64(absoluteBytesDiff)/float64(clientTest.bytes_sent) > 0.01 { // if bytes difference larger than 1%
+	if float64(absoluteBytesDiff)/float64(clientTest.bytesSent) > 0.01 { // if bytes difference larger than 1%
 		t.FailNow()
 	}
 
@@ -303,11 +303,11 @@ func handleTestRunning(t *testing.T) int {
 	}
 
 	if serverTest.mode == IPERF_SENDER {
-		assert.Equal(t, serverTest.bytes_sent, totalBytes)
-		assert.Equal(t, serverTest.bytes_received, uint64(0))
+		assert.Equal(t, serverTest.bytesSent, totalBytes)
+		assert.Equal(t, serverTest.bytesReceived, uint64(0))
 	} else {
-		assert.Equal(t, serverTest.bytes_received, totalBytes)
-		assert.Equal(t, serverTest.bytes_sent, uint64(0))
+		assert.Equal(t, serverTest.bytesReceived, totalBytes)
+		assert.Equal(t, serverTest.bytesSent, uint64(0))
 	}
 	return 0
 }

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (test *iperf_test) server_listen() int {
+func (test *iperfTest) server_listen() int {
 	listen_addr := ":"
 	listen_addr += strconv.Itoa(int(test.port))
 	var err error
@@ -22,10 +22,10 @@ func (test *iperf_test) server_listen() int {
 	return 0
 }
 
-func (test *iperf_test) handleServerCtrlMsg() {
+func (test *iperfTest) handleServerCtrlMsg() {
 	buf := make([]byte, 4) // only for ctrl state
 	for {
-		if n, err := test.ctrl_conn.Read(buf); err == nil {
+		if n, err := test.ctrlConn.Read(buf); err == nil {
 			state := binary.LittleEndian.Uint32(buf[:])
 			log.Debugf("Ctrl conn receive n = %v state = [%v]", n, state)
 			//if err != nil {
@@ -36,12 +36,12 @@ func (test *iperf_test) handleServerCtrlMsg() {
 		} else {
 			if serr, ok := err.(*net.OpError); ok {
 				log.Info("Client control connection close. err = %T %v", serr, serr)
-				test.ctrl_conn.Close()
+				test.ctrlConn.Close()
 			} else if err == os.ErrClosed || err == io.ErrClosedPipe || err == io.EOF {
 				log.Info("Client control connection close. err = %T %v", serr, serr)
 			} else {
 				log.Errorf("ctrl_conn read failed. err=%T, %v", err, err)
-				test.ctrl_conn.Close()
+				test.ctrlConn.Close()
 			}
 			return
 		}
@@ -52,8 +52,8 @@ func (test *iperf_test) handleServerCtrlMsg() {
 		case TEST_END:
 			log.Infof("Server Enter Test End state...")
 			test.done = true
-			if test.stats_callback != nil {
-				test.stats_callback(test)
+			if test.statsCallback != nil {
+				test.statsCallback(test)
 			}
 			test.closeAllStreams()
 
@@ -74,8 +74,8 @@ func (test *iperf_test) handleServerCtrlMsg() {
 				return
 			}
 			log.Infof("Server Enter Display Result state...")
-			if test.reporter_callback != nil { // why call these again
-				test.reporter_callback(test)
+			if test.reporterCallback != nil { // why call these again
+				test.reporterCallback(test)
 			}
 			//if test.display_results() < 0 {
 			//	log.Errorf("display result failed")
@@ -85,13 +85,13 @@ func (test *iperf_test) handleServerCtrlMsg() {
 		case IPERF_DONE:
 			test.state = IPERF_DONE
 			log.Debugf("Server reach IPERF_DONE")
-			test.ctrl_chan <- IPERF_DONE
+			test.ctrlChan <- IPERF_DONE
 			test.proto.teardown(test)
 			return
 		case CLIENT_TERMINATE: //not used yet
 			old_state := test.state
 			test.state = IPERF_DISPLAY_RESULT
-			test.reporter_callback(test)
+			test.reporterCallback(test)
 			test.state = old_state
 
 			test.closeAllStreams()
@@ -105,14 +105,14 @@ func (test *iperf_test) handleServerCtrlMsg() {
 	}
 }
 
-func (test *iperf_test) create_server_timer() int {
+func (test *iperfTest) create_server_timer() int {
 	now := time.Now()
 	cd := TimerClientData{p: test}
 	test.timer = timer_create(now, server_timer_proc, cd, (test.duration+5)*1000) // convert sec to ms, add 5 sec to ensure client end first
 	times := test.duration * 1000 / test.interval
-	test.stats_ticker = ticker_create(now, server_stats_ticker_proc, cd, test.interval, times-1)
-	test.report_ticker = ticker_create(now, server_report_ticker_proc, cd, test.interval, times-1)
-	if test.timer.timer == nil || test.stats_ticker.ticker == nil || test.report_ticker.ticker == nil {
+	test.statsTicker = ticker_create(now, server_stats_ticker_proc, cd, test.interval, times-1)
+	test.reportTicker = ticker_create(now, server_report_ticker_proc, cd, test.interval, times-1)
+	if test.timer.timer == nil || test.statsTicker.ticker == nil || test.reportTicker.ticker == nil {
 		log.Error("timer create failed.")
 	}
 	return 0
@@ -120,7 +120,7 @@ func (test *iperf_test) create_server_timer() int {
 
 func server_timer_proc(data TimerClientData, now time.Time) {
 	log.Debugf("Enter server_timer_proc")
-	test := data.p.(*iperf_test)
+	test := data.p.(*iperfTest)
 	if test.done {
 		return
 	}
@@ -135,31 +135,31 @@ func server_timer_proc(data TimerClientData, now time.Time) {
 }
 
 func server_stats_ticker_proc(data TimerClientData, now time.Time) {
-	test := data.p.(*iperf_test)
+	test := data.p.(*iperfTest)
 	if test.done {
 		return
 	}
-	if test.stats_callback != nil {
-		test.stats_callback(test)
+	if test.statsCallback != nil {
+		test.statsCallback(test)
 	}
 }
 
 func server_report_ticker_proc(data TimerClientData, now time.Time) {
-	test := data.p.(*iperf_test)
+	test := data.p.(*iperfTest)
 	if test.done {
 		return
 	}
-	if test.reporter_callback != nil {
-		test.reporter_callback(test)
+	if test.reporterCallback != nil {
+		test.reporterCallback(test)
 	}
 }
 
-func (test *iperf_test) create_server_omit_timer() int {
+func (test *iperfTest) create_server_omit_timer() int {
 	// undo, depend on which kind of timer
 	return 0
 }
 
-func (test *iperf_test) run_server() int {
+func (test *iperfTest) run_server() int {
 	log.Debugf("Enter run_server")
 
 	if test.server_listen() < 0 {
@@ -174,7 +174,7 @@ func (test *iperf_test) run_server() int {
 		log.Error("Accept failed")
 		return -2
 	}
-	test.ctrl_conn = conn
+	test.ctrlConn = conn
 	fmt.Printf("Accept connection from client: %v\n", conn.RemoteAddr())
 	// exchange params
 	if test.setSendState(IPERF_EXCHANGE_PARAMS) < 0 {
@@ -190,13 +190,13 @@ func (test *iperf_test) run_server() int {
 
 	go test.handleServerCtrlMsg() // coroutine handle control msg
 
-	if test.is_server == true {
+	if test.isServer == true {
 		listener, err := test.proto.listen(test)
 		if err != nil {
 			log.Error("proto listen error.")
 			return -4
 		}
-		test.proto_listener = listener
+		test.protoListener = listener
 	}
 
 	// create streams
@@ -209,20 +209,20 @@ func (test *iperf_test) run_server() int {
 	var is_iperf_done bool = false
 	for is_iperf_done != true {
 		select {
-		case state := <-test.ctrl_chan:
+		case state := <-test.ctrlChan:
 			log.Debugf("Ctrl channel receive state [%v]", state)
 			if state == IPERF_DONE {
 				return 0
 			} else if state == IPERF_CREATE_STREAM {
 				var stream_num uint = 0
-				for stream_num < test.stream_num {
+				for stream_num < test.streamNum {
 					proto_conn, err := test.proto.accept(test)
 					if err != nil {
 						log.Error("proto accept error.")
 						return -4
 					}
 					stream_num++
-					var sp *iperf_stream
+					var sp *iperfStream
 					if test.mode == IPERF_SENDER {
 						sp = test.newStream(proto_conn, SENDER_STREAM)
 					} else {
@@ -234,9 +234,9 @@ func (test *iperf_test) run_server() int {
 						return -4
 					}
 					test.streams = append(test.streams, sp)
-					log.Debugf("create new stream, stream_num = %v, target stream num = %v", stream_num, test.stream_num)
+					log.Debugf("create new stream, stream_num = %v, target stream num = %v", stream_num, test.streamNum)
 				}
-				if stream_num == test.stream_num {
+				if stream_num == test.streamNum {
 					if test.setSendState(TEST_START) != 0 {
 						log.Errorf("set_send_state error")
 						return -5
