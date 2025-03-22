@@ -52,8 +52,11 @@ func clientTimerProc(data TimerClientData, now time.Time) {
 	log.Debugf("Enter client_timer_proc")
 
 	test := data.p.(*iperfTest)
+
 	test.timer.done <- true
+
 	test.done = true // will end send/recv in iperf_send/iperf_recv, and then triggered TEST_END
+
 	test.timer.timer = nil
 }
 
@@ -239,11 +242,13 @@ func (test *iperfTest) ConnectServer() int {
 
 	return 0
 }
+
 func (test *iperfTest) runClient() int {
 
 	rtn := test.ConnectServer()
 	if rtn < 0 {
 		log.Errorf("ConnectServer failed")
+
 		return -1
 	}
 
@@ -307,5 +312,6 @@ func (test *iperfTest) runClient() int {
 			}
 		}
 	}
+
 	return 0
 }
