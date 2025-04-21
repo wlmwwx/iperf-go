@@ -58,15 +58,15 @@ const (
 )
 
 const (
-	TCP_INTERVAL_HEADER       = "[ ID]    Interval        Transfer        Bandwidth        RTT        Retrans\n"
-	TCP_RESULT_HEADER         = "[ ID]    Interval        Transfer        Bandwidth        RTT        Retrans   Retrans(%%)\n"
-	RUDP_INTERVAL_HEADER      = "[ ID]    Interval        Transfer        Bandwidth        RTT        Retrans   Retrans(%%)  Lost(%%)  Early(%%)  Fast(%%)\n"
-	RUDP_RESULT_HEADER        = "[ ID]    Interval        Transfer        Bandwidth        RTT        Retrans   Retrans(%%)  Lost(%%)  Early(%%)  Fast(%%)  Recover(%%)  PktsLost(%%)  SegsLost(%%)\n"
-	TCP_REPORT_SINGLE_STREAM  = "[  %v] %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\n"
-	RUDP_REPORT_SINGLE_STREAM = "[  %v] %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\n"
-	TCP_REPORT_SINGLE_RESULT  = "[  %v] %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t%2.2f%%\t[%s]\n"
-	RUDP_REPORT_SINGLE_RESULT = "[  %v] %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t[%s]\n"
-	REPORT_SUM_STREAM         = "[SUM] %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t\n"
+	TCP_INTERVAL_HEADER       = "[ ID]    Timestamp           Interval        Transfer        Bandwidth        RTT        Retrans\n"
+	TCP_RESULT_HEADER         = "[ ID]    Timestamp           Interval        Transfer        Bandwidth        RTT        Retrans   Retrans(%%)\n"
+	RUDP_INTERVAL_HEADER      = "[ ID]    Timestamp           Interval        Transfer        Bandwidth        RTT        Retrans   Retrans(%%)  Lost(%%)  Early(%%)  Fast(%%)\n"
+	RUDP_RESULT_HEADER        = "[ ID]    Timestamp           Interval        Transfer        Bandwidth        RTT        Retrans   Retrans(%%)  Lost(%%)  Early(%%)  Fast(%%)  Recover(%%)  PktsLost(%%)  SegsLost(%%)\n"
+	TCP_REPORT_SINGLE_STREAM  = "[  %v] %s %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\n"
+	RUDP_REPORT_SINGLE_STREAM = "[  %v] %s %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\n"
+	TCP_REPORT_SINGLE_RESULT  = "[  %v] %s %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t%2.2f%%\t[%s]\n"
+	RUDP_REPORT_SINGLE_RESULT = "[  %v] %s %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t%2.2f%%\t[%s]\n"
+	REPORT_SUM_STREAM         = "[SUM] %s %4.2f-%4.2f sec\t%5.2f MB\t%5.2f Mb/s\t%6.1fms\t%4v\t\n"
 	REPORT_SEPERATOR          = "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n"
 	SUMMARY_SEPERATOR         = "- - - - - - - - - - - - - - - - SUMMARY - - - - - - - - - - - - - - - -\n"
 )

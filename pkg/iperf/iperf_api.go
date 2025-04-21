@@ -766,10 +766,13 @@ func (test *IperfTest) iperfPrintIntermediate() {
 		displayBytesTransfer := float64(rp.bytes_transfered) / MB_TO_B
 		displayBandwidth := displayBytesTransfer / float64(test.interval) * 1000 * 8 // Mb/s
 
+		// Get current timestamp
+		timestamp := rp.interval_end_time.Format("15:04:05.000")
+
 		// output single stream interval report
 		if test.proto.name() == TCP_NAME {
 			//display_retrans_rate :=  float64(rp.interval_retrans) / (float64(rp.bytes_transfered) / TCP_MSS) * 100
-			fmt.Printf(TCP_REPORT_SINGLE_STREAM, i, displayStartTime, displayEndTime,
+			fmt.Printf(TCP_REPORT_SINGLE_STREAM, i, timestamp, displayStartTime, displayEndTime,
 				displayBytesTransfer, displayBandwidth, float64(rp.rtt)/1000, rp.interval_retrans)
 		} else {
 			totalSegs := float64(rp.bytes_transfered)/RUDP_MSS + float64(rp.interval_retrans)
@@ -779,7 +782,7 @@ func (test *IperfTest) iperfPrintIntermediate() {
 			displayEarlyRetransRate := float64(rp.interval_early_retrans) / totalSegs * 100
 			displayFastRetransRate := float64(rp.interval_fast_retrans) / totalSegs * 100
 
-			fmt.Printf(RUDP_REPORT_SINGLE_STREAM, i, displayStartTime, displayEndTime, displayBytesTransfer,
+			fmt.Printf(RUDP_REPORT_SINGLE_STREAM, i, timestamp, displayStartTime, displayEndTime, displayBytesTransfer,
 				displayBandwidth, float64(rp.rtt)/1000, rp.interval_retrans, displayRetransRate,
 				displayLostRate, displayEarlyRetransRate, displayFastRetransRate)
 		}
@@ -789,7 +792,10 @@ func (test *IperfTest) iperfPrintIntermediate() {
 		displaySumBytesTransfer := float64(sumBytesTransfer) / MB_TO_B
 		displayBandwidth := displaySumBytesTransfer / float64(test.interval) * 1000 * 8
 
-		fmt.Printf(REPORT_SUM_STREAM, displayStartTime, displayEndTime, displaySumBytesTransfer,
+		// Get current timestamp for summary
+		timestamp := time.Now().Format("15:04:05.000")
+
+		fmt.Printf(REPORT_SUM_STREAM, timestamp, displayStartTime, displayEndTime, displaySumBytesTransfer,
 			displayBandwidth, float64(sumRtt)/1000/float64(test.streamNum), sumRetrans)
 
 		fmt.Printf(REPORT_SEPERATOR)
@@ -853,11 +859,14 @@ func (test *IperfTest) iperfPrintResults() {
 			role = "RECEIVER"
 		}
 
+		// Get current timestamp
+		timestamp := sp.result.end_time.Format("15:04:05.000")
+
 		// output single stream final report
 		if test.proto.name() == TCP_NAME {
 			totalSegs := (displayBytesTransfer * MB_TO_B / TCP_MSS) + float64(sp.result.stream_retrans)
 			displayRetransRate := float64(sp.result.stream_retrans) / totalSegs * 100
-			fmt.Printf(TCP_REPORT_SINGLE_RESULT, i, displayStartTime, displayEndTime, displayBytesTransfer,
+			fmt.Printf(TCP_REPORT_SINGLE_RESULT, i, timestamp, displayStartTime, displayEndTime, displayBytesTransfer,
 				displayBandwidth, displayRtt, sp.result.stream_retrans, displayRetransRate, role)
 		} else {
 			totalSegs := float64(sp.result.stream_out_segs)
@@ -871,7 +880,7 @@ func (test *IperfTest) iperfPrintResults() {
 			pktsLostRate := (1 - float64(sp.result.stream_in_pkts)/float64(sp.result.stream_out_pkts)) * 100
 			segsLostRate := (1 - float64(sp.result.stream_in_segs)/float64(sp.result.stream_out_segs)) * 100
 
-			fmt.Printf(RUDP_REPORT_SINGLE_RESULT, i, displayStartTime, displayEndTime, displayBytesTransfer,
+			fmt.Printf(RUDP_REPORT_SINGLE_RESULT, i, timestamp, displayStartTime, displayEndTime, displayBytesTransfer,
 				displayBandwidth, displayRtt, sp.result.stream_retrans, displayRetransRate,
 				displayLostRate, displayEarlyRetransRate, displayFastRetransRate,
 				recoverRate, pktsLostRate, segsLostRate, role)
@@ -884,7 +893,10 @@ func (test *IperfTest) iperfPrintResults() {
 		displaySumBytesTransfer := float64(sumBytesTransfer) / MB_TO_B
 		displayBandwidth := displaySumBytesTransfer / float64(test.duration) * 1000 * 8
 
-		fmt.Printf(REPORT_SUM_STREAM, displayStartTime, displayEndTime,
+		// Get current timestamp for summary
+		timestamp := time.Now().Format("15:04:05.000")
+
+		fmt.Printf(REPORT_SUM_STREAM, timestamp, displayStartTime, displayEndTime,
 			displaySumBytesTransfer, displayBandwidth, avgRtt/float64(test.streamNum), sumRetrans)
 	}
 }
